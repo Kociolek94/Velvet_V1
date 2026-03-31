@@ -11,18 +11,19 @@ import {
     Activity,
     Gift,
     Flame,
-    Users
+    Users,
+    Layers
 } from 'lucide-react'
 
 const NAV_ITEMS = [
     { id: 'dashboard', icon: LayoutDashboard, href: '/dashboard', label: 'Status' },
-    { id: 'issues', icon: ShieldCheck, href: '/dashboard/issues', label: 'Safe' },
+    { id: 'issues', icon: ShieldCheck, href: '/dashboard/issues', label: 'Przestrzeń' },
     { id: 'diary', icon: BookHeart, href: '/dashboard/diary', label: 'Pamiętnik' },
     { id: 'games', icon: Trophy, href: '/dashboard/games', label: 'Gry' },
+    { id: 'activity-deck', icon: Layers, href: '/dashboard/activity-deck', label: 'Talia' },
     { id: 'bucket-list', icon: Compass, href: '/dashboard/bucket-list', label: 'Marzenia' },
-    { id: 'tracker', icon: Activity, href: '/dashboard/tracker', label: 'Nawyki' },
-    { id: 'prizes', icon: Gift, href: '/dashboard/prizes', label: 'Nagrody' },
-    { id: 'room', icon: Flame, href: '/dashboard/room', label: 'Ignition' },
+    { id: 'wishlist', icon: Gift, href: '/dashboard/wishlist', label: 'Życzenia' },
+    { id: 'room', icon: Flame, href: '/dashboard/room', label: 'Namiętność' },
     { id: 'profile', icon: Users, href: '/dashboard/profile', label: 'Profil' },
 ]
 

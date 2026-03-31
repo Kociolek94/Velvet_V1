@@ -1,105 +1,87 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/utils/supabase/client'
+import { useState, useMemo } from 'react'
 import DashboardLayout from "@/components/DashboardLayout"
 import DiaryCard from "@/components/DiaryCard"
 import AddDiaryEntryModal from "@/components/AddDiaryEntryModal"
 import DiaryDetailView from "@/components/DiaryDetailView"
-import { BookHeart, Plus, Compass } from "lucide-react"
-
-interface DiaryEntry {
-    id: string
-    title: string
-    content: string
-    image_path: string
-    event_date: string
-    couple_id: string
-}
+import { BookHeart, Plus, Compass, Heart, Star, Pen } from "lucide-react"
+import { useDiary } from '@/hooks/useDiary'
+import { useAuth } from '@/hooks/useAuth'
+import { DiaryEntry } from '@/types/diary'
+import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
 
 export default function DiaryPage() {
-    const [entries, setEntries] = useState<DiaryEntry[]>([])
-    const [loading, setLoading] = useState(true)
-    const [coupleId, setCoupleId] = useState<string | null>(null)
+    const { userId, coupleId, loading: authLoading } = useAuth()
+    const { entries, loading: diaryLoading } = useDiary(coupleId)
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-    const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null)
+    const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
+    const [activeFilter, setActiveFilter] = useState<string>('all')
+
+    const loading = authLoading || diaryLoading
     
-    const supabase = createClient()
+    const filters = [
+        { id: 'all', label: 'Wszystkie', icon: BookHeart },
+        { id: 'origin', label: 'Początki', icon: Heart },
+        { id: 'adventure', label: 'Przygoda', icon: Compass },
+        { id: 'milestone', label: 'Sukcesy', icon: Star },
+        { id: 'daily', label: 'Codzienność', icon: Pen }
+    ]
 
-    const fetchEntries = useCallback(async (cid: string) => {
-        setLoading(true)
-        const { data, error } = await supabase
-            .from('diary_entries')
-            .select('*')
-            .eq('couple_id', cid)
-            .order('event_date', { ascending: false })
-        
-        if (error) {
-            console.error('Error fetching diary entries:', error)
-        } else {
-            setEntries(data || [])
-        }
-        setLoading(false)
-    }, [supabase])
+    const filteredEntries = useMemo(() => {
+        return activeFilter === 'all' 
+            ? entries 
+            : entries.filter(e => e.template_type === activeFilter)
+    }, [entries, activeFilter])
 
-    useEffect(() => {
-        async function init() {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('couple_id')
-                .eq('id', user.id)
-                .single()
-
-            if (profile?.couple_id) {
-                setCoupleId(profile.couple_id)
-                fetchEntries(profile.couple_id)
-                
-                // Realtime subscription
-                const channel = supabase
-                    .channel('diary_changes')
-                    .on(
-                        'postgres_changes',
-                        { event: '*', schema: 'public', table: 'diary_entries', filter: `couple_id=eq.${profile.couple_id}` },
-                        () => {
-                            fetchEntries(profile.couple_id)
-                        }
-                    )
-                    .subscribe()
-
-                return () => {
-                    supabase.removeChannel(channel)
-                }
-            }
-        }
-        init()
-    }, [supabase, fetchEntries])
+    const selectedEntry = useMemo(() => {
+        return entries.find(e => e.id === selectedEntryId) || null
+    }, [entries, selectedEntryId])
 
     return (
         <DashboardLayout>
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header Container */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
                     <div className="space-y-3">
                         <div className="flex items-center gap-3">
                             <BookHeart className="text-velvet-gold animate-pulse" size={24} />
                             <h1 className="text-4xl font-heading text-velvet-gold uppercase tracking-[0.2em] leading-none">Pamiętnik Związku</h1>
                         </div>
-                        <div className="flex items-center gap-4 text-gray-500">
-                            <div className="w-8 h-[1px] bg-velvet-gold/30" />
-                            <p className="text-xs uppercase tracking-[0.4em] font-medium">Wasza Wspólna Historia</p>
+                        <div className="flex items-center gap-4 text-velvet-cream/30">
+                            <div className="w-8 h-px bg-velvet-gold/30" />
+                            <p className="text-[10px] uppercase tracking-[0.4em] font-black italic">Wasza Wspólna Historia</p>
                         </div>
                     </div>
                     
-                    <button 
+                    <Button 
                         onClick={() => setIsAddModalOpen(true)}
-                        className="v-button-burgundy self-start md:self-center h-16 group"
+                        variant="burgundy"
+                        size="lg"
+                        className="group"
                     >
                         <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500" />
-                        Dodaj Wspomnienie
-                    </button>
+                        <span>Dodaj Wspomnienie</span>
+                    </Button>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="flex flex-wrap items-center gap-3 mb-12 border-b border-white/5 pb-8 overflow-x-auto custom-scrollbar">
+                    {filters.map((f) => (
+                        <button
+                            key={f.id}
+                            onClick={() => setActiveFilter(f.id)}
+                            className={`flex items-center gap-3 px-6 py-4 rounded-full border transition-all duration-500 whitespace-nowrap ${
+                                activeFilter === f.id
+                                ? 'bg-velvet-gold/10 border-velvet-gold text-velvet-gold shadow-[0_0_20px_rgba(212,175,55,0.1)]'
+                                : 'bg-white/5 border-white/5 text-velvet-cream/40 hover:border-velvet-gold/30'
+                            }`}
+                        >
+                            <f.icon size={14} className={activeFilter === f.id ? 'animate-pulse' : ''} />
+                            <span className="text-[10px] uppercase tracking-[0.2em] font-black">{f.label}</span>
+                        </button>
+                    ))}
                 </div>
 
                 {/* Main Content Area */}
@@ -108,43 +90,45 @@ export default function DiaryPage() {
                         <div className="w-16 h-16 border-2 border-velvet-gold/10 border-t-velvet-gold rounded-full animate-spin" />
                         <span className="text-[10px] uppercase tracking-[0.4em] text-velvet-gold/40 font-black">Otwieranie Kroniki...</span>
                     </div>
-                ) : entries.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in fill-mode-forwards opacity-0">
-                        {entries.map((entry) => (
+                ) : filteredEntries.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 fill-mode-both">
+                        {filteredEntries.map((entry) => (
                             <DiaryCard 
                                 key={entry.id}
                                 title={entry.title}
-                                imagePath={entry.image_path}
-                                eventDate={entry.event_date}
-                                onClick={() => setSelectedEntry(entry)}
+                                imagePath={entry.image_path || ''}
+                                eventDate={entry.event_date || ''}
+                                templateType={entry.template_type || undefined}
+                                onClick={() => setSelectedEntryId(entry.id)}
                             />
                         ))}
                     </div>
                 ) : (
-                    <div className="v-card p-20 flex flex-col items-center justify-center text-center border-dashed border-velvet-gold/20 bg-velvet-gold/[0.02]">
+                    <div className="v-card p-20 flex flex-col items-center justify-center text-center border-dashed border-velvet-gold/20 bg-velvet-gold/[0.02] rounded-[3rem]">
                         <div className="p-8 rounded-full bg-velvet-gold/5 mb-8">
                             <Compass className="text-velvet-gold/30" size={64} />
                         </div>
                         <h2 className="text-2xl font-heading text-velvet-gold/60 uppercase tracking-[0.2em] mb-4">Pusty Pamiętnik</h2>
-                        <p className="text-gray-500 text-sm max-w-sm mb-10 leading-relaxed font-light">
+                        <p className="text-velvet-cream/40 text-[11px] uppercase tracking-widest max-w-sm mb-10 leading-relaxed font-bold">
                             Wasza historia dopiero się pisze. Dodajcie pierwsze wspólne zdjęcie i opiszcie tę wyjątkową chwilę.
                         </p>
-                        <button 
+                        <Button 
                             onClick={() => setIsAddModalOpen(true)}
-                            className="v-button-outline-gold px-12 py-5"
+                            variant="outline"
+                            className="px-12 py-5"
                         >
                             Stwórz Pierwszy Wpis
-                        </button>
+                        </Button>
                     </div>
                 )}
             </div>
 
             {/* Modals */}
-            {coupleId && (
+            {coupleId && userId && (
                 <AddDiaryEntryModal 
                     isOpen={isAddModalOpen} 
                     onClose={() => setIsAddModalOpen(false)} 
-                    onSuccess={() => fetchEntries(coupleId)}
+                    onSuccess={() => {}} // Hook handles refresh via Realtime
                     coupleId={coupleId}
                 />
             )}
@@ -152,7 +136,7 @@ export default function DiaryPage() {
             {selectedEntry && (
                 <DiaryDetailView 
                     entry={selectedEntry} 
-                    onClose={() => setSelectedEntry(null)} 
+                    onClose={() => setSelectedEntryId(null)} 
                 />
             )}
         </DashboardLayout>

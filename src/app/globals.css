@@ -47,9 +47,21 @@
     @apply bg-velvet-beige text-velvet-dark border border-white/10 rounded-2xl shadow-card transition-all duration-300;
   }
 
+  .v-card-burgundy {
+    @apply bg-gradient-to-br from-[#2D0A0A]/90 via-[#1A0505]/95 to-[#0A0E14] border border-velvet-burgundy/30 rounded-3xl shadow-card transition-all duration-500 overflow-hidden;
+  }
+
+  .v-card-glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-premium;
+  }
+
   /* Buttons */
   .v-button-burgundy {
-    @apply bg-velvet-burgundy text-white border border-velvet-gold/20 rounded-xl px-6 py-4 font-bold transition-all hover:bg-velvet-burgundy/90 active:scale-95 shadow-premium flex items-center justify-center gap-2;
+    @apply bg-velvet-burgundy text-white border border-velvet-gold/20 font-bold transition-all hover:bg-velvet-burgundy/90 active:scale-95 shadow-premium flex items-center justify-center gap-2;
+  }
+
+  .v-button-gold {
+    @apply bg-gradient-to-br from-velvet-gold via-[#e5c158] to-velvet-gold text-velvet-burgundy font-black transition-all hover:brightness-110 active:scale-95 shadow-[0_0_20px_rgba(212,175,55,0.3)] flex items-center justify-center gap-2;
   }
 
   .v-button-outline-gold {
@@ -87,6 +99,14 @@
 
   .animate-shake {
     animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+  }
+
+  .animate-flash-gold {
+    animation: flashGold 1s ease-out forwards;
+  }
+
+  .animate-glow-gold {
+    animation: glowGold 2s ease-in-out infinite;
   }
 }
 
@@ -138,4 +158,45 @@
   60% {
     transform: translate3d(4px, 0, 0);
   }
+}
+
+@keyframes flashGold {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+  }
+
+  20% {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 0 100px 30px rgba(212, 175, 55, 0.4);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+    box-shadow: 0 0 200px 60px rgba(212, 175, 55, 0);
+  }
+}
+
+@keyframes glowGold {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
+  }
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

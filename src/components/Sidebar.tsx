@@ -14,19 +14,20 @@ import {
     Compass,
     Gift,
     Flame,
-    Users
+    Users,
+    Layers
 } from 'lucide-react'
 
 const MENU_ITEMS = [
     { id: 'back', label: 'Wróć do menu', href: '/', icon: ChevronLeft },
     { id: 'dashboard', label: 'Status Relacji', href: '/dashboard', icon: LayoutDashboard },
-    { id: 'safe-space', label: 'Safe Space', href: '/dashboard/issues', icon: ShieldCheck },
+    { id: 'safe-space', label: 'Bezpieczna Przestrzeń', href: '/dashboard/issues', icon: ShieldCheck },
     { id: 'diary', label: 'Pamiętnik Związku', href: '/dashboard/diary', icon: BookHeart },
     { id: 'games', label: 'Velvet Games', href: '/dashboard/games', icon: Trophy },
-    { id: 'bucket-list', label: 'Bucket List', href: '/dashboard/bucket-list', icon: Compass },
-    { id: 'tracker', label: '12WY Tracker', href: '/dashboard/tracker', icon: Activity },
-    { id: 'prizes', label: 'Nagrody VP', href: '/dashboard/prizes', icon: Gift },
-    { id: 'room', label: 'Strefa Ignition', href: '/dashboard/room', icon: Flame },
+    { id: 'activity-deck', label: 'Talia Aktywności', href: '/dashboard/activity-deck', icon: Layers },
+    { id: 'bucket-list', label: 'Lista Marzeń', href: '/dashboard/bucket-list', icon: Compass },
+    { id: 'wishlist', label: 'Lista Życzeń', href: '/dashboard/wishlist', icon: Gift },
+    { id: 'room', label: 'Pokój Namiętności', href: '/dashboard/room', icon: Flame },
     { id: 'profile', label: 'Profil Pary', href: '/dashboard/profile', icon: Users },
 ]
 

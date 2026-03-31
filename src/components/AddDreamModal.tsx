@@ -6,12 +6,23 @@ import { X } from 'lucide-react'
 interface AddDreamModalProps {
     isOpen: boolean
     onClose: () => void
-    onAdd: (dream: { title: string, category: string, description: string, estimated_date?: string }) => void
+    onAdd: (dream: { 
+        title: string, 
+        owner_type: string, 
+        description: string, 
+        estimated_date?: string,
+        activity_category: string,
+        budget_level: number,
+        vibe: string
+    }) => void
 }
 
 export default function AddDreamModal({ isOpen, onClose, onAdd }: AddDreamModalProps) {
     const [title, setTitle] = useState('')
-    const [category, setCategory] = useState('wspólne')
+    const [ownerType, setOwnerType] = useState('wspólne')
+    const [activityCategory, setActivityCategory] = useState('experience')
+    const [budgetLevel, setBudgetLevel] = useState(1)
+    const [vibe, setVibe] = useState('romance')
     const [description, setDescription] = useState('')
     const [estimatedDate, setEstimatedDate] = useState('')
 
@@ -20,9 +31,20 @@ export default function AddDreamModal({ isOpen, onClose, onAdd }: AddDreamModalP
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!title.trim()) return
-        onAdd({ title, category, description, estimated_date: estimatedDate || undefined })
+        onAdd({ 
+            title, 
+            owner_type: ownerType, 
+            description, 
+            estimated_date: estimatedDate || undefined,
+            activity_category: activityCategory,
+            budget_level: budgetLevel,
+            vibe
+        })
         setTitle('')
-        setCategory('wspólne')
+        setOwnerType('wspólne')
+        setActivityCategory('experience')
+        setBudgetLevel(1)
+        setVibe('romance')
         setDescription('')
         setEstimatedDate('')
         onClose()
@@ -62,13 +84,80 @@ export default function AddDreamModal({ isOpen, onClose, onAdd }: AddDreamModalP
                                 <button
                                     key={cat}
                                     type="button"
-                                    onClick={() => setCategory(cat)}
-                                    className={`py-2 rounded-lg border text-[11px] font-bold uppercase tracking-wider transition-all ${category === cat
+                                    onClick={() => setOwnerType(cat)}
+                                    className={`py-2 rounded-lg border text-[11px] font-bold uppercase tracking-wider transition-all ${ownerType === cat
                                             ? 'bg-velvet-gold text-black border-velvet-gold'
                                             : 'bg-black/20 text-gray-500 border-white/10 hover:border-white/20'
                                         }`}
                                 >
                                     {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-[10px] uppercase tracking-[0.2em] text-velvet-gold/60 mb-2 font-bold">
+                                Kategoria
+                            </label>
+                            <select 
+                                value={activityCategory}
+                                onChange={(e) => setActivityCategory(e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-velvet-gold/50 outline-none transition-all appearance-none"
+                            >
+                                <option value="travel">Podróże</option>
+                                <option value="experience">Przeżycia</option>
+                                <option value="intimacy">Bliskość</option>
+                                <option value="material">Rzeczy</option>
+                                <option value="growth">Rozwój</option>
+                                <option value="food">Smaki</option>
+                                <option value="home">Dom</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] uppercase tracking-[0.2em] text-velvet-gold/60 mb-2 font-bold">
+                                Vibe
+                            </label>
+                            <div className="flex gap-2 h-[46px]">
+                                {[
+                                    { id: 'relax', label: 'R' },
+                                    { id: 'romance', label: 'L' },
+                                    { id: 'adrenaline', label: 'A' }
+                                ].map((v) => (
+                                    <button
+                                        key={v.id}
+                                        type="button"
+                                        title={v.id}
+                                        onClick={() => setVibe(v.id)}
+                                        className={`flex-1 rounded-lg border text-[11px] font-bold uppercase transition-all ${vibe === v.id
+                                            ? 'bg-velvet-gold text-black border-velvet-gold'
+                                            : 'bg-black/20 text-gray-500 border-white/10 hover:border-white/20'
+                                        }`}
+                                    >
+                                        {v.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] uppercase tracking-[0.2em] text-velvet-gold/60 mb-2 font-bold">
+                            Budżet (1-4)
+                        </label>
+                        <div className="flex gap-4">
+                            {[1, 2, 3, 4].map((num) => (
+                                <button
+                                    key={num}
+                                    type="button"
+                                    onClick={() => setBudgetLevel(num)}
+                                    className={`flex-1 h-10 rounded-lg border text-[14px] font-bold transition-all ${budgetLevel >= num
+                                        ? 'bg-velvet-gold/20 text-velvet-gold border-velvet-gold'
+                                        : 'bg-black/20 text-gray-700 border-white/5'
+                                    }`}
+                                >
+                                    $
                                 </button>
                             ))}
                         </div>

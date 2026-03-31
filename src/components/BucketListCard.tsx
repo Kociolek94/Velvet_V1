@@ -1,64 +1,125 @@
 'use client'
 
-import { createClient } from '@/utils/supabase/client'
-import { Check } from 'lucide-react'
-
-interface BucketListItem {
-    id: string
-    title: string
-    category: 'jej' | 'jego' | 'wspólne'
-    is_completed: boolean
-    description?: string
-    estimated_date?: string
-}
+import { Check, Plane, Sparkles, Heart, ShoppingBag, TrendingUp, Utensils, Home, Compass, Calendar } from 'lucide-react'
+import { BucketListItem } from '@/types/bucket-list'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import Image from 'next/image'
 
 interface BucketListCardProps {
     item: BucketListItem
     onToggle: (id: string, completed: boolean) => void
+    onOpen: (item: BucketListItem) => void
 }
 
-export default function BucketListCard({ item, onToggle }: BucketListCardProps) {
-    const categoryColors = {
-        jej: 'bg-pink-900/30 text-pink-200 border-pink-500/30',
-        jego: 'bg-blue-900/30 text-blue-200 border-blue-500/30',
-        wspólne: 'bg-velvet-gold/10 text-velvet-gold border-velvet-gold/30'
+export default function BucketListCard({ item, onToggle, onOpen }: BucketListCardProps) {
+    const categoryIcons: Record<string, any> = {
+        travel: Plane,
+        experience: Sparkles,
+        intimacy: Heart,
+        material: ShoppingBag,
+        growth: TrendingUp,
+        food: Utensils,
+        home: Home
+    }
+
+    const CatIcon = categoryIcons[item.activity_category || ''] || Compass
+
+    const ownerVariant = (owner: string) => {
+        if (owner === 'jej') return 'red'
+        if (owner === 'jego') return 'cream'
+        return 'gold'
     }
 
     return (
-        <div className={`v-card-gold-border p-5 flex flex-col justify-between h-full group hover:shadow-[0_0_20px_rgba(212,175,55,0.15)] transition-all ${item.is_completed ? 'opacity-60' : ''}`}>
-            <div>
-                <div className="flex justify-between items-start mb-3">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${categoryColors[item.category]}`}>
-                        {item.category}
-                    </span>
-                    <button
-                        onClick={() => onToggle(item.id, !item.is_completed)}
-                        className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${item.is_completed
-                                ? 'bg-velvet-gold border-velvet-gold text-black'
-                                : 'border-velvet-gold/30 bg-black/40 text-transparent hover:border-velvet-gold'
-                            }`}
-                    >
-                        <Check size={14} strokeWidth={3} className={item.is_completed ? 'block' : 'group-hover:block group-hover:text-velvet-gold/40'} />
-                    </button>
+        <Card 
+            variant="dark"
+            padding="none"
+            hoverEffect={!item.is_completed}
+            onClick={() => onOpen(item)}
+            className={`group h-full flex flex-col overflow-hidden transition-all duration-700 ${item.is_completed ? 'opacity-60 saturate-[0.2]' : ''}`}
+        >
+            {/* Image Section */}
+            <div className="relative h-48 w-full overflow-hidden">
+                {item.image_url ? (
+                    <Image 
+                        src={item.image_url} 
+                        alt={item.title} 
+                        fill 
+                        className="object-cover group-hover:scale-110 transition-transform duration-1000"
+                    />
+                ) : (
+                    <div className="absolute inset-0 bg-velvet-gold/5 flex items-center justify-center">
+                        <CatIcon size={48} className="text-velvet-gold/20" />
+                    </div>
+                )}
+                
+                {/* Overlay Badges */}
+                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                    <Badge variant={ownerVariant(item.owner_type)} size="xs">
+                        {item.owner_type}
+                    </Badge>
+                    <Badge variant="default" size="xs" dot>
+                        {item.activity_category}
+                    </Badge>
                 </div>
 
-                <h3 className={`text-lg font-semibold leading-tight mb-2 ${item.is_completed ? 'line-through text-gray-500' : 'text-velvet-gold'}`}>
-                    {item.title}
-                </h3>
+                <div className="absolute top-4 right-4">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onToggle(item.id, !item.is_completed)
+                        }}
+                        className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-500 backdrop-blur-md ${item.is_completed
+                                ? 'bg-velvet-gold border-velvet-gold text-black shadow-[0_0_20px_rgba(212,175,55,0.4)]'
+                                : 'border-white/20 bg-black/40 text-transparent hover:border-velvet-gold hover:text-velvet-gold/40'
+                            }`}
+                    >
+                        <Check size={20} strokeWidth={3} className={item.is_completed ? 'opacity-100 scale-100' : 'opacity-0 scale-50'} />
+                    </button>
+                </div>
+            </div>
+
+            <div className="p-6 flex flex-col flex-1">
+                <div className="flex items-start justify-between mb-3">
+                    <h3 className={`text-xl font-heading leading-tight transition-all duration-500 ${item.is_completed ? 'line-through text-velvet-cream/30' : 'text-velvet-gold'}`}>
+                        {item.title}
+                    </h3>
+                    <div className="flex gap-0.5 ml-3 pt-1">
+                        {[...Array(4)].map((_, i) => (
+                            <span key={i} className={`text-[10px] font-black ${i < (item.budget_level || 0) ? 'text-velvet-gold' : 'text-white/10'}`}>
+                                $
+                            </span>
+                        ))}
+                    </div>
+                </div>
 
                 {item.description && (
-                    <p className="text-gray-400 text-sm line-clamp-3 mb-4">
+                    <p className="text-velvet-cream/40 text-[11px] uppercase tracking-widest line-clamp-2 mb-6 font-bold leading-relaxed">
                         {item.description}
                     </p>
                 )}
-            </div>
 
-            {(item.estimated_date || item.is_completed) && (
-                <div className="mt-auto pt-4 border-t border-white/5 flex justify-between items-center text-[10px] uppercase tracking-widest text-gray-500">
-                    <span>{item.estimated_date ? new Date(item.estimated_date).toLocaleDateString('pl-PL') : ''}</span>
-                    {item.is_completed && <span className="text-velvet-gold font-bold">Zrealizowane</span>}
+                <div className="mt-auto pt-6 border-t border-white/5 flex justify-between items-center text-[9px] uppercase tracking-[0.3em] font-black italic">
+                    <div className="flex items-center gap-2 text-velvet-cream/30">
+                        {item.estimated_date && (
+                            <>
+                                <Calendar size={12} />
+                                <span>{new Date(item.estimated_date).toLocaleDateString('pl-PL')}</span>
+                            </>
+                        )}
+                    </div>
+                    
+                    {item.is_completed ? (
+                        <div className="flex items-center gap-2 text-velvet-gold">
+                            <Sparkles size={12} className="animate-pulse" />
+                            <span>Zrealizowane</span>
+                        </div>
+                    ) : (
+                        <span className="text-velvet-cream/10 group-hover:text-velvet-gold transition-colors duration-500 font-black">Sczegóły marzenia</span>
+                    )}
                 </div>
-            )}
-        </div>
+            </div>
+        </Card>
     )
 }

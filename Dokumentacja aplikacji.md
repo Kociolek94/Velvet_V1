@@ -180,7 +180,9 @@ Model hybrydowy: Wspólne **XP** (rozwój relacji) + Indywidualne **VP** (waluta
 - **E2EE Storage:** Pełna prywatność mediów w Supabase Storage.
 
 ### 📋 Systemy Wspierające
-- **Tablica Marzeń (Bucket List):** Wspólne cele do zrealizowania.
+- **Tablica Marzeń (Bucket List):** Strategiczne, duże projekty wspólne (np. podróż życia, zakup domu, kamienie milowe).
+- **Lista Życzeń (Wishlists):** Indywidualne inspiracje i pomysły na prezenty. Możliwość oznaczania jako `secret` (ukryte przed partnerem do momentu ujawnienia).
+- **Talia Aktywności (Activity Deck):** Baza szybkich pomysłów na randki i wspólny czas, kategoryzowana przez vibe, czas i koszt.
 - **Śledzik Nawyków (12WY):** Wizualizacja ciągłości pozytywnych zachowań.
 - **Ping-Pong Notifications:** Powiadomienia zachęcające do wzajemności.
 

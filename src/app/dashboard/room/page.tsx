@@ -8,7 +8,7 @@ export default function RoomPage() {
     return (
         <DashboardLayout>
             <ModulePlaceholder
-                title="Strefa Ignition"
+                title="Pokój Namiętności"
                 description="Twoja prywatna przestrzeń intymnej synchronizacji i odkrywania nowych wymiarów bliskości."
                 icon={Flame}
             />

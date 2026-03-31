@@ -12,6 +12,7 @@ import {
     AlertCircle,
     Clock
 } from 'lucide-react'
+import VelvetDateTimePicker from './VelvetDateTimePicker'
 
 type Priority = 'red' | 'yellow' | 'green'
 
@@ -122,12 +123,10 @@ export default function TalkIssueForm() {
                     <div className="space-y-3">
                         <label className="text-[10px] text-velvet-gold uppercase tracking-widest font-bold ml-2">Proponowany Termin</label>
                         <div className="relative group">
-                            <Clock className="absolute left-5 top-1/2 -translate-y-1/2 text-velvet-cream/20 group-focus-within:text-velvet-gold transition-colors" size={18} />
-                            <input
-                                type="datetime-local"
+                            <VelvetDateTimePicker 
                                 value={formData.scheduled_at}
-                                onChange={e => setFormData({ ...formData, scheduled_at: e.target.value })}
-                                className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-14 pr-6 text-velvet-cream focus:border-velvet-gold/30 focus:outline-none transition-all [color-scheme:dark]"
+                                onChange={(iso) => setFormData({ ...formData, scheduled_at: iso })}
+                                placeholder="Kliknij, aby wybrać termin..."
                             />
                         </div>
                     </div>

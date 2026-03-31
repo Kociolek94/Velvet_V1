@@ -1,199 +1,218 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/utils/supabase/client'
+import { useState, useMemo } from 'react'
 import DashboardLayout from "@/components/DashboardLayout"
 import BucketListCard from "@/components/BucketListCard"
-import AddDreamModal from "@/components/AddDreamModal"
-import { Plus, Compass, Filter } from "lucide-react"
+import AddBucketListItemModal from "@/components/AddBucketListItemModal"
+import BucketListDetailView from "@/components/BucketListDetailView"
+import { Plus, Compass, Filter, Sparkles, Plane, ShoppingBag, TrendingUp, Utensils, Home, Heart, Loader2 } from "lucide-react"
+import { useAuth } from '@/hooks/useAuth'
+import { useBucketList } from '@/hooks/useBucketList'
+import { BucketListItem } from '@/types/bucket-list'
+import { toggleBucketListItemStatus } from '@/lib/actions/bucket_list'
+import Button from '@/components/ui/Button'
 
-interface BucketListItem {
-    id: string
-    title: string
-    category: 'jej' | 'jego' | 'wspólne'
-    is_completed: boolean
-    description?: string
-    estimated_date?: string
-    couple_id: string
+interface CategoryFilterItemProps {
+    active: boolean
+    label: string
+    icon: string
+    onClick: () => void
+}
+
+function CategoryFilterItem({ active, label, icon, onClick }: CategoryFilterItemProps) {
+    const Icons: Record<string, any> = { Compass, Plane, Sparkles, Heart, ShoppingBag, TrendingUp, Utensils, Home }
+    const Icon = Icons[icon] || Compass
+
+    return (
+        <button
+            onClick={onClick}
+            className={`flex flex-col items-center gap-3 group transition-all min-w-[80px] ${active ? 'scale-110' : 'opacity-40 hover:opacity-100 hover:scale-105'}`}
+        >
+            <div className={`p-4 rounded-2xl border transition-all duration-500 ${active 
+                ? 'bg-velvet-gold/20 border-velvet-gold shadow-[0_0_20px_rgba(212,175,55,0.2)] text-velvet-gold' 
+                : 'bg-white/5 border-white/10 text-velvet-cream group-hover:border-velvet-gold/30'
+            }`}>
+                <Icon size={ active ? 24 : 20} strokeWidth={active ? 2.5 : 2} />
+            </div>
+            <span className={`text-[9px] uppercase tracking-[0.2em] font-black transition-colors ${active ? 'text-velvet-gold' : 'text-velvet-cream/40'}`}>
+                {label}
+            </span>
+        </button>
+    )
 }
 
 export default function BucketListPage() {
-    const [dreams, setDreams] = useState<BucketListItem[]>([])
-    const [loading, setLoading] = useState(true)
-    const [coupleId, setCoupleId] = useState<string | null>(null)
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    const [filter, setFilter] = useState<'wszystkie' | 'jej' | 'jego' | 'wspólne'>('wszystkie')
-
-    const supabase = createClient()
-
-    useEffect(() => {
-        async function init() {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('couple_id')
-                .eq('id', user.id)
-                .single()
-
-            if (profile?.couple_id) {
-                setCoupleId(profile.couple_id)
-                fetchDreams(profile.couple_id)
-
-                // Realtime subscription
-                const channel = supabase
-                    .channel('bucket_list_changes')
-                    .on(
-                        'postgres_changes',
-                        { event: '*', schema: 'public', table: 'bucket_list', filter: `couple_id=eq.${profile.couple_id}` },
-                        (payload) => {
-                            if (payload.eventType === 'INSERT') {
-                                setDreams(prev => [payload.new as BucketListItem, ...prev])
-                            } else if (payload.eventType === 'UPDATE') {
-                                setDreams(prev => prev.map(d => d.id === payload.new.id ? payload.new as BucketListItem : d))
-                            } else if (payload.eventType === 'DELETE') {
-                                setDreams(prev => prev.filter(d => d.id !== payload.old.id))
-                            }
-                        }
-                    )
-                    .subscribe()
-
-                return () => {
-                    supabase.removeChannel(channel)
-                }
-            }
-        }
-        init()
-    }, [supabase])
-
-    const fetchDreams = async (cid: string) => {
-        setLoading(true)
-        const { data } = await supabase
-            .from('bucket_list')
-            .select('*')
-            .eq('couple_id', cid)
-            .order('created_at', { ascending: false })
-
-        setDreams(data || [])
-        setLoading(false)
-    }
-
-    const handleAddDream = async (dream: { title: string, category: string, description: string, estimated_date?: string }) => {
-        if (!coupleId) return
-
-        const { data: { user } } = await supabase.auth.getUser()
-
-        const { error } = await supabase
-            .from('bucket_list')
-            .insert([{
-                ...dream,
-                couple_id: coupleId,
-                created_by: user?.id,
-                is_completed: false
-            }])
-
-        if (error) {
-            console.error('Error adding dream:', error)
-            alert('Wystąpił błąd podczas dodawania marzenia.')
-        }
-    }
+    const { userId, coupleId, loading } = useAuth()
+    const { items: dreams, loading: loadingItems, refetch } = useBucketList(coupleId)
+    
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [selectedDream, setSelectedDream] = useState<BucketListItem | null>(null)
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+    const [ownerFilter, setOwnerFilter] = useState<'wszystkie' | 'jej' | 'jego' | 'wspólne'>('wszystkie')
+    const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
     const toggleDream = async (id: string, completed: boolean) => {
-        const { error } = await supabase
-            .from('bucket_list')
-            .update({ is_completed: completed })
-            .eq('id', id)
-
-        if (error) {
-            console.error('Error updating dream:', error)
+        try {
+            await toggleBucketListItemStatus(id, completed)
+            // Realtime will handle update if useBucketList is configured for it, 
+            // but we can also optimistically update or refetch
+            refetch()
+        } catch (err) {
+            console.error('Error toggling dream:', err)
         }
     }
 
-    const filteredDreams = dreams.filter(dream =>
-        filter === 'wszystkie' ? true : dream.category === filter
-    )
+    const handleOpenDream = (dream: BucketListItem) => {
+        setSelectedDream(dream)
+        setIsDetailModalOpen(true)
+    }
+
+    const suggestRandomDream = () => {
+        const uncompleted = dreams.filter(d => !d.is_completed)
+        if (uncompleted.length === 0) {
+            alert("Wszystkie marzenia zrealizowane! Czas dodać nowe.")
+            return
+        }
+        const random = uncompleted[Math.floor(Math.random() * uncompleted.length)]
+        handleOpenDream(random)
+    }
+
+    const filteredDreams = useMemo(() => {
+        return dreams.filter(dream => {
+            const matchesOwner = ownerFilter === 'wszystkie' ? true : dream.owner_type === ownerFilter
+            const matchesCategory = categoryFilter === 'all' ? true : dream.activity_category === categoryFilter
+            return matchesOwner && matchesCategory
+        })
+    }, [dreams, ownerFilter, categoryFilter])
 
     return (
         <DashboardLayout>
-            <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="max-w-7xl mx-auto px-6 py-12">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <Compass className="text-velvet-gold animate-pulse" size={24} />
-                            <h1 className="text-3xl font-heading text-velvet-gold uppercase tracking-[0.2em]">Tablica Marzeń</h1>
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10 mb-16">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-velvet-gold/10 rounded-2xl text-velvet-gold shadow-[0_0_20px_rgba(212,175,55,0.1)]">
+                                <Compass size={28} className="animate-pulse" />
+                            </div>
+                            <h1 className="text-4xl font-heading text-velvet-gold uppercase tracking-[0.2em] leading-none pt-2">Tablica Marzeń</h1>
                         </div>
-                        <p className="text-gray-500 text-sm tracking-wide">Wasza wspólna przyszłość zapisana w marzeniach.</p>
+                        <p className="text-velvet-cream/40 text-[10px] uppercase tracking-[0.4em] font-black italic max-w-md leading-relaxed">
+                            Wasza wspólna przyszłość zapisana w marzeniach i przeżyciach.
+                        </p>
                     </div>
 
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="v-button-burgundy self-start md:self-center group"
-                    >
-                        <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-                        Dodaj Marzenie
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <Button
+                            variant="outline"
+                            onClick={suggestRandomDream}
+                            className="h-14 group"
+                        >
+                            <Sparkles size={18} className="text-velvet-gold animate-pulse mr-3" />
+                            <span className="uppercase tracking-widest font-black text-[10px]">Zasugeruj coś</span>
+                        </Button>
+                        <Button
+                            variant="burgundy"
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="h-14 group"
+                        >
+                            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500 mr-3" />
+                            <span className="uppercase tracking-widest font-black text-[10px]">Dodaj Marzenie</span>
+                        </Button>
+                    </div>
                 </div>
 
-                {/* Filter Section */}
-                <div className="flex flex-wrap items-center gap-3 mb-10">
-                    <div className="flex items-center gap-2 mr-2 text-gray-500 py-2">
-                        <Filter size={14} className="text-velvet-gold/50" />
-                        <span className="text-[10px] uppercase tracking-widest font-bold">Filtruj:</span>
+                {/* Filters Section */}
+                <div className="space-y-10 mb-16">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-3 mr-4 text-velvet-gold/40">
+                            <Filter size={14} />
+                            <span className="text-[10px] uppercase tracking-[0.3em] font-black italic">Dla kogo:</span>
+                        </div>
+                        {(['wszystkie', 'jej', 'jego', 'wspólne'] as const).map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => setOwnerFilter(cat)}
+                                className={`px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${ownerFilter === cat
+                                        ? 'bg-velvet-gold text-black shadow-[0_0_25px_rgba(212,175,55,0.3)] scale-105'
+                                        : 'bg-white/5 text-velvet-cream/30 hover:bg-white/10 border border-white/5'
+                                    }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
                     </div>
-                    {(['wszystkie', 'jej', 'jego', 'wspólne'] as const).map((cat) => (
-                        <button
-                            key={cat}
-                            onClick={() => setFilter(cat)}
-                            className={`px-6 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${filter === cat
-                                    ? 'bg-velvet-gold text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]'
-                                    : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/5'
-                                }`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
+
+                    <div className="relative py-4 overflow-x-auto no-scrollbar border-y border-white/5">
+                        <div className="flex items-center gap-10 pb-2 min-w-max">
+                            <CategoryFilterItem active={categoryFilter === 'all'} label="Wszystkie" icon="Compass" onClick={() => setCategoryFilter('all')} />
+                            <CategoryFilterItem active={categoryFilter === 'travel'} label="Podróże" icon="Plane" onClick={() => setCategoryFilter('travel')} />
+                            <CategoryFilterItem active={categoryFilter === 'experience'} label="Przeżycia" icon="Sparkles" onClick={() => setCategoryFilter('experience')} />
+                            <CategoryFilterItem active={categoryFilter === 'intimacy'} label="Bliskość" icon="Heart" onClick={() => setCategoryFilter('intimacy')} />
+                            <CategoryFilterItem active={categoryFilter === 'material'} label="Rzeczy" icon="ShoppingBag" onClick={() => setCategoryFilter('material')} />
+                            <CategoryFilterItem active={categoryFilter === 'growth'} label="Rozwój" icon="TrendingUp" onClick={() => setCategoryFilter('growth')} />
+                            <CategoryFilterItem active={categoryFilter === 'food'} label="Smaki" icon="Utensils" onClick={() => setCategoryFilter('food')} />
+                            <CategoryFilterItem active={categoryFilter === 'home'} label="Dom" icon="Home" onClick={() => setCategoryFilter('home')} />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Grid Section */}
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20">
-                        <div className="w-12 h-12 border-2 border-velvet-gold/20 border-t-velvet-gold rounded-full animate-spin mb-4" />
-                        <p className="text-velvet-gold/50 text-[10px] uppercase tracking-widest font-bold">Otwieranie Twoich marzeń...</p>
+                    <div className="flex flex-col items-center justify-center py-32 space-y-6 opacity-30">
+                        <Loader2 size={32} className="text-velvet-gold animate-spin" />
+                        <p className="text-velvet-gold text-[9px] uppercase tracking-[0.5em] font-black italic">Otwieranie skarbca marzeń...</p>
                     </div>
                 ) : filteredDreams.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                         {filteredDreams.map((dream) => (
                             <BucketListCard
                                 key={dream.id}
                                 item={dream}
                                 onToggle={toggleDream}
+                                onOpen={handleOpenDream}
                             />
                         ))}
                     </div>
                 ) : (
-                    <div className="v-card p-12 flex flex-col items-center justify-center text-center opacity-80 border-dashed border-velvet-gold/20">
-                        <div className="bg-velvet-gold/5 p-6 rounded-full mb-6">
-                            <Compass className="text-velvet-gold/30" size={48} />
+                    <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-[4rem] p-24 flex flex-col items-center justify-center text-center group hover:border-velvet-gold/20 transition-all duration-1000">
+                        <div className="bg-velvet-gold/5 p-10 rounded-full mb-8 relative">
+                            <Compass className="text-velvet-gold/20 group-hover:rotate-45 transition-transform duration-1000" size={64} />
+                            <div className="absolute inset-0 bg-velvet-gold/10 blur-[3rem] rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <h2 className="text-lg font-heading text-velvet-gold/60 uppercase tracking-widest mb-2">Tablica jest pusta</h2>
-                        <p className="text-gray-600 text-sm max-w-xs mb-8">Zacznijcie planować swoje wspólne pizeżycia. Dodajcie pierwsze marzenie!</p>
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="v-button-outline-gold"
+                        <h2 className="text-2xl font-heading text-velvet-gold/40 uppercase tracking-[0.2em] mb-4">Pusta Tablica</h2>
+                        <p className="text-velvet-cream/20 text-[10px] uppercase tracking-[0.3em] font-black italic max-w-xs mb-10 leading-relaxed pr-2">
+                            Wasza wspólna podróż czeka na pierwszy wpis. Co chcecie razem przeżyć?
+                        </p>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="px-12"
                         >
                             Dodaj pierwsze marzenie
-                        </button>
+                        </Button>
                     </div>
                 )}
             </div>
 
-            <AddDreamModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onAdd={handleAddDream}
-            />
+                {coupleId && (
+                    <AddBucketListItemModal
+                        isOpen={isAddModalOpen}
+                        onClose={() => setIsAddModalOpen(false)}
+                        coupleId={coupleId}
+                        onSuccess={refetch}
+                    />
+                )}
+
+                {selectedDream && (
+                    <BucketListDetailView
+                        isOpen={isDetailModalOpen}
+                        onClose={() => setIsDetailModalOpen(false)}
+                        item={selectedDream}
+                        userId={userId || ''}
+                        onSuccess={refetch}
+                    />
+                )}
         </DashboardLayout>
     )
 }
