@@ -13,15 +13,35 @@ if (-not (Test-Path ".env.local")) {
 
 # 1. Pobieranie aktualizacji z GitHub
 Write-Host "[1/4] Sprawdzanie aktualizacji..." -ForegroundColor Yellow
-if (Test-Path ".git") {
-    git pull
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Błąd podczas git pull. Upewnij się, że masz połączenie z internetem i dostęp do repozytorium." -ForegroundColor Red
+
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    if (Test-Path ".git") {
+        # Pobranie najświeższych informacji z serwera
+        git fetch --all --quiet
+        
+        # Sprawdzenie czy są zmiany lokalne, które mogą blokować pull
+        $status = git status --porcelain
+        if ($status) {
+            Write-Host "Wykryto lokalne zmiany. Zabezpieczam je (git stash)..." -ForegroundColor Gray
+            git stash --include-untracked --quiet
+        }
+
+        # Wykonanie aktualizacji
+        Write-Host "Pobieranie nowych plików..." -ForegroundColor Cyan
+        git pull --rebase --autostash
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Błąd podczas git pull. Upewnij się, że masz połączenie z internetem." -ForegroundColor Red
+            Write-Host "Spróbuj ręcznie: git pull" -ForegroundColor Gray
+        } else {
+            Write-Host "Repozytorium jest aktualne." -ForegroundColor Green
+        }
     } else {
-        Write-Host "Repozytorium jest aktualne." -ForegroundColor Green
+        Write-Host "Pominięto aktualizację: Folder nie jest repozytorium Git." -ForegroundColor Gray
     }
 } else {
-    Write-Host "Pominięto aktualizację: Folder nie jest repozytorium Git." -ForegroundColor Gray
+    Write-Host "BŁĄD: Git nie jest zainstalowany lub nie jest w PATH!" -ForegroundColor Red
+    Write-Host "Pobierz Git ze strony: https://git-scm.com/" -ForegroundColor Gray
 }
 
 # 2. Instalacja zależności npm

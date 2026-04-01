@@ -54,7 +54,7 @@ export default function Sidebar() {
                             className="w-10 h-10 object-contain relative z-10 group-hover:scale-110 transition-transform" 
                         />
                     </div>
-                    <span className="text-xl font-bold tracking-[0.2em] text-velvet-gold uppercase font-heading">Velvet</span>
+                    <span className="text-xl font-bold tracking-[0.2em] text-velvet-gold uppercase font-heading">Velvet!</span>
                 </Link>
             </div>
 

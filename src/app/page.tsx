@@ -24,7 +24,7 @@ export default function Home() {
                         </div>
                         <div className="space-y-4">
                             <h1 className="text-6xl md:text-8xl font-light text-velvet-gold tracking-[0.5em] uppercase font-heading">
-                                Velvet
+                                Velvet!
                             </h1>
                             <p className="text-velvet-cream/40 text-[10px] md:text-xs uppercase tracking-[1em] font-black">
                                 Ekskluzywny Ekosystem Dla Waszej Relacji
@@ -61,7 +61,7 @@ export default function Home() {
 
                 <footer className="mt-20 flex gap-12 text-velvet-cream/20 text-[10px] uppercase tracking-[0.4em] font-bold">
                     <Link href="/login" className="hover:text-velvet-gold transition-colors">Logowanie</Link>
-                    <Link href="/register" className="hover:text-velvet-gold transition-colors">Dołącz do Velvet</Link>
+                    <Link href="/register" className="hover:text-velvet-gold transition-colors">Dołącz do Velvet!</Link>
                 </footer>
 
             </div>
