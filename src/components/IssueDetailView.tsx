@@ -15,9 +15,11 @@ import {
     OctagonAlert,
     Calendar,
     PenTool,
-    FileText
+    FileText,
+    Sparkle
 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { analyzeMessage } from '@/lib/actions/velvet_engine'
 import OverloadModal from './OverloadModal'
 import VelvetDateTimePicker from './VelvetDateTimePicker'
 import { Issue, IssueUpdate, IssueStatus, IssueContent } from '@/types/issue'
@@ -56,6 +58,8 @@ export default function IssueDetailView({
     const [isOverloadModalOpen, setIsOverloadModalOpen] = useState(false)
     const [isRescheduling, setIsRescheduling] = useState(false)
     const [newSchedule, setNewSchedule] = useState(issue.scheduled_at || '')
+    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
+    const [isAnalyzing, setIsAnalyzing] = useState(false)
     const supabase = createClient()
 
     const isHeavy = issue.type === 'heavy'
@@ -148,6 +152,33 @@ export default function IssueDetailView({
     const handleSaveDraft = async () => {
         await onUpdateIssue(issue.id, { solution_draft: draftText })
         setIsEditingDraft(false)
+    }
+
+    const handleAnalyze = async () => {
+        if (!newComment.trim() || newComment.length < 5) return
+        
+        setIsAnalyzing(true)
+        try {
+            const result = await analyzeMessage(newComment)
+            if (result.suggestion) {
+                setAiSuggestion(result.suggestion)
+            } else {
+                setAiSuggestion(null)
+                // Optional: show a "Message is perfect" toast
+            }
+        } catch (error) {
+            console.error('AI Analysis failed:', error)
+        } finally {
+            setIsAnalyzing(false)
+        }
+    }
+
+    const applySuggestion = () => {
+        if (aiSuggestion) {
+            const cleanText = aiSuggestion.replace('Velvet Engine sugeruje: ', '')
+            setNewComment(cleanText)
+            setAiSuggestion(null)
+        }
     }
 
     const handleSign = async (type: 'author' | 'recipient') => {
@@ -387,9 +418,54 @@ export default function IssueDetailView({
                         </div>
                         
                         <div className="relative group px-4">
+                            {/* AI Suggestion Box */}
+                            {aiSuggestion && (
+                                <div className="mb-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                                    <div className="bg-velvet-gold/10 border border-velvet-gold/30 rounded-2xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                        <div className="absolute top-0 right-0 p-2">
+                                            <Sparkle className="text-velvet-gold/40 animate-pulse" size={14} />
+                                        </div>
+                                        <p className="text-velvet-gold text-xs italic font-medium leading-relaxed pr-8">
+                                            {aiSuggestion}
+                                        </p>
+                                        <button 
+                                            onClick={applySuggestion}
+                                            className="mt-4 text-[9px] uppercase tracking-[0.2em] font-bold text-velvet-gold hover:text-velvet-cream transition-colors flex items-center gap-2"
+                                        >
+                                            <Sparkles size={10} />
+                                            Zastosuj sugestię
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Analysis Trigger Button */}
+                            <div className="flex justify-end mb-4">
+                                <button
+                                    onClick={handleAnalyze}
+                                    disabled={isAnalyzing || !newComment.trim() || isOverloaded}
+                                    className="flex items-center gap-3 text-[9px] uppercase tracking-[0.4em] font-black text-velvet-gold/60 hover:text-velvet-gold transition-all disabled:opacity-20"
+                                >
+                                    {isAnalyzing ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-velvet-gold rounded-full animate-ping" />
+                                            Analizuję...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Sparkles size={14} className="text-velvet-gold" />
+                                            Analizuj przez Velvet Engine
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
                             <textarea
                                 value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
+                                onChange={(e) => {
+                                    setNewComment(e.target.value)
+                                    if (aiSuggestion) setAiSuggestion(null)
+                                }}
                                 disabled={isOverloaded}
                                 placeholder={isOverloaded ? "Dialog tymczasowo zawieszony..." : "Wyraź swoje myśli..."}
                                 className={`w-full bg-black/60 border ${isOverloaded ? 'border-velvet-gold/20 opacity-30' : 'border-white/10 group-hover:border-white/20'} rounded-3xl p-8 text-velvet-cream text-sm focus:outline-none focus:border-velvet-gold/30 transition-all h-32 pr-24`}

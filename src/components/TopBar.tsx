@@ -63,7 +63,11 @@ export default function TopBar({ onOpenNotifications, unreadCount, setUnreadCoun
     return (
         <header className="h-20 border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-md sticky top-0 z-30 px-8 flex items-center justify-between">
             <div className="flex items-center gap-3 lg:hidden">
-                <Activity className="text-velvet-gold" size={24} />
+                <img 
+                    src="/Velvet.png" 
+                    alt="Velvet" 
+                    className="w-10 h-10 object-contain" 
+                />
                 <span className="text-xl font-bold tracking-[0.2em] text-velvet-gold uppercase font-heading">Velvet</span>
             </div>
 

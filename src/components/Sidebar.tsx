@@ -45,9 +45,14 @@ export default function Sidebar() {
     return (
         <aside className="hidden lg:flex flex-col w-72 h-screen bg-[#0A0E14] border-r border-white/5 p-6 fixed left-0 top-0 z-40 overflow-y-auto custom-scrollbar">
             <div className="mb-8 px-4 mt-2">
-                <Link href="/" className="flex items-center gap-2 group">
-                    <div className="w-8 h-8 bg-velvet-gold/10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-gold">
-                        <Activity size={18} className="text-velvet-gold" />
+                <Link href="/" className="flex items-center gap-3 group">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-velvet-gold/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <img 
+                            src="/Velvet.png" 
+                            alt="Velvet" 
+                            className="w-10 h-10 object-contain relative z-10 group-hover:scale-110 transition-transform" 
+                        />
                     </div>
                     <span className="text-xl font-bold tracking-[0.2em] text-velvet-gold uppercase font-heading">Velvet</span>
                 </Link>

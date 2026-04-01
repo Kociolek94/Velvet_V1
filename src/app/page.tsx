@@ -12,18 +12,25 @@ export default function Home() {
 
             <div className="z-10 max-w-5xl w-full flex flex-col items-center">
 
-                <header className="mb-20 text-center animate-in fade-in slide-in-from-bottom-5 duration-1000 fill-mode-forwards">
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                        <div className="w-12 h-[1px] bg-velvet-gold/30" />
-                        <Sparkles className="text-velvet-gold" size={20} />
-                        <div className="w-12 h-[1px] bg-velvet-gold/30" />
+                <header className="mb-20 text-center animate-in fade-in slide-in-from-bottom-5 duration-1000 fill-mode-forwards relative group">
+                    <div className="flex flex-col items-center gap-10">
+                        <div className="relative">
+                            <div className="absolute inset-[-40px] bg-velvet-gold/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                            <img 
+                                src="/Velvet.png" 
+                                alt="Velvet Logo" 
+                                className="w-32 h-32 md:w-48 md:h-48 object-contain relative z-10 transition-transform duration-1000 group-hover:scale-110 drop-shadow-gold" 
+                            />
+                        </div>
+                        <div className="space-y-4">
+                            <h1 className="text-6xl md:text-8xl font-light text-velvet-gold tracking-[0.5em] uppercase font-heading">
+                                Velvet
+                            </h1>
+                            <p className="text-velvet-cream/40 text-[10px] md:text-xs uppercase tracking-[1em] font-black">
+                                Ekskluzywny Ekosystem Dla Waszej Relacji
+                            </p>
+                        </div>
                     </div>
-                    <h1 className="text-7xl md:text-9xl font-light text-velvet-gold tracking-[0.3em] uppercase font-heading">
-                        Vel<span className="italic">vet</span>
-                    </h1>
-                    <p className="text-velvet-cream/60 text-xs md:text-sm uppercase tracking-[0.6em] mt-6 font-medium">
-                        Ekskluzywny Ekosystem Dla Waszej Relacji
-                    </p>
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl p-4">

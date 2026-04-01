@@ -43,9 +43,19 @@ export default function AuthForm({ type }: AuthFormProps) {
     }
 
     return (
-        <div className="w-full max-w-md p-8 bg-velvet-dark/50 border border-velvet-burgundy rounded-2xl backdrop-blur-md">
-            <h2 className="text-3xl font-bold text-velvet-gold mb-8 text-center uppercase tracking-widest">
-                {type === 'login' ? 'Zaloguj się' : 'Dołącz do nas'}
+        <div className="w-full max-w-md p-10 bg-velvet-dark/50 border border-velvet-burgundy/30 rounded-[2.5rem] backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+            {/* Logo placement */}
+            <div className="flex justify-center mb-8 relative">
+                <div className="absolute inset-0 bg-velvet-gold/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                <img 
+                    src="/Velvet.png" 
+                    alt="Velvet" 
+                    className="w-16 h-16 object-contain relative z-10 drop-shadow-gold" 
+                />
+            </div>
+
+            <h2 className="text-3xl font-heading text-velvet-gold mb-10 text-center uppercase tracking-[0.3em] font-bold">
+                {type === 'login' ? 'Witaj ponowie' : 'Zacznijmy Razem'}
             </h2>
 
             <form onSubmit={handleAuth} className="space-y-6">

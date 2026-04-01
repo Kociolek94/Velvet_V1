@@ -152,8 +152,13 @@ export default function OnboardingPage() {
             <div className="w-full max-w-4xl z-10 flex flex-col items-center">
 
                 <header className="mb-16 text-center animate-fade-in">
-                    <div className="flex items-center justify-center gap-3 mb-6">
-                        <Sparkles className="text-velvet-gold" size={24} />
+                    <div className="flex items-center justify-center mb-8 relative">
+                        <div className="absolute inset-[-20px] bg-velvet-gold/10 rounded-full blur-2xl animate-pulse" />
+                        <img 
+                            src="/Velvet.png" 
+                            alt="Velvet" 
+                            className="w-20 h-20 object-contain relative z-10" 
+                        />
                     </div>
                     <h1 className="text-4xl md:text-5xl font-semibold text-velvet-gold font-heading mb-4 tracking-tight uppercase">
                         {step === 'profile' ? 'Witaj w' : 'Wasza'} <span className="text-velvet-cream italic font-light lowercase">{step === 'profile' ? 'Velvet' : 'Wspólna Podróż'}</span>

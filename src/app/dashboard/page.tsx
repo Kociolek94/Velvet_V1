@@ -18,6 +18,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import AIInsightCard from '@/components/AIInsightCard'
+import RelationshipAnalysis from '@/components/RelationshipAnalysis'
 
 export default function DashboardPage() {
     const { userId, coupleId, loading: authLoading } = useAuth()
@@ -371,50 +373,11 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Velvet Insight (AI Mimic) - Full Width Grid */}
-                <Card className="v-card-burgundy md:p-16 p-10 overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:scale-100 transition-transform duration-1000">
-                        <Sparkles size={200} />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-16 items-center relative z-10">
-                        <div className="md:col-span-8 space-y-10">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-velvet-gold/20 flex items-center justify-center border border-velvet-gold/30 shadow-[0_0_20px_rgba(212,175,55,0.2)]">
-                                    <Sparkles className="text-velvet-gold" size={24} />
-                                </div>
-                                <div className="space-y-1">
-                                    <h3 className="text-sm font-black uppercase tracking-[0.4em] text-velvet-gold/80">Velvet Insight</h3>
-                                    <div className="h-[1px] w-20 bg-gradient-to-r from-velvet-gold/40 to-transparent" />
-                                </div>
-                            </div>
+                {/* Relationship Analysis AI - Full Width */}
+                <RelationshipAnalysis />
 
-                            <motion.p 
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-3xl md:text-5xl font-light text-white leading-tight italic font-serif"
-                            >
-                                "{stats?.insight}"
-                            </motion.p>
-                            
-                            <div className="flex flex-wrap gap-4">
-                                <Badge variant="gold" className="bg-velvet-gold/10 border-velvet-gold/20 px-4 py-2">ANALIZA DYNAMIKI</Badge>
-                                <Badge variant="cream" className="bg-white/5 border-white/10 px-4 py-2 text-white/40">GŁĘBOKIE POŁĄCZENIE</Badge>
-                            </div>
-                        </div>
-
-                        <div className="md:col-span-4 flex flex-col items-center justify-center space-y-6 md:border-l md:border-white/5">
-                            <div className="w-32 h-32 rounded-full border-2 border-dashed border-velvet-gold/20 flex items-center justify-center p-2 relative">
-                                <div className="absolute inset-2 rounded-full border border-velvet-gold/40 animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]" />
-                                <Heart className="text-velvet-gold" size={40} />
-                            </div>
-                            <div className="text-center space-y-2">
-                                <span className="text-[10px] text-velvet-cream/40 uppercase tracking-[0.3em] font-black">Twoja Ścieżka</span>
-                                <p className="text-xs text-white uppercase tracking-widest font-bold">Poziom Bliskości: Eteryczny</p>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
+                {/* Velvet Insight (AI Confidant) - Full Width Grid */}
+                <AIInsightCard />
 
                 {/* Footer Advice */}
                 <div className="bg-gradient-to-br from-white to-velvet-cream/90 p-12 md:p-16 rounded-[4rem] flex flex-col lg:flex-row items-center justify-between gap-12 group relative overflow-hidden shadow-2xl">
