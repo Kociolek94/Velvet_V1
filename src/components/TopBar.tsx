@@ -68,7 +68,7 @@ export default function TopBar({ onOpenNotifications, unreadCount, setUnreadCoun
                     alt="Velvet" 
                     className="w-10 h-10 object-contain" 
                 />
-                <span className="text-xl font-bold tracking-[0.2em] text-velvet-gold uppercase font-heading">Velvet</span>
+                <span className="text-xl font-bold tracking-[0.2em] text-velvet-gold uppercase font-heading">Velvet!</span>
             </div>
 
             <div className="hidden lg:flex items-center justify-center flex-1">
