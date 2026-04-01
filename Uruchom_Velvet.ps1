@@ -1,65 +1,65 @@
-# Ustawienie kodowania na UTF8 dla poprawnych znaków w konsoli
+# VELVET Launcher - ASCII Version (Safe Encoding)
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host "--- Inicjalizacja Velvet ---" -ForegroundColor Cyan
 
-# 0. Sprawdzenie wymagań lokalnych
+# 0. Check requirements
 if (-not (Test-Path ".env.local")) {
-    Write-Host "--- OSTRZEŻENIE ---" -ForegroundColor Red
-    Write-Host "Brak pliku .env.local! Aplikacja może nie działać poprawnie bez kluczy Supabase." -ForegroundColor Red
-    Write-Host "Upewnij się, że skopiowałeś ten plik z innego komputera." -ForegroundColor Red
+    Write-Host "--- OSTRZEZENIE ---" -ForegroundColor Red
+    Write-Host "Brak pliku .env.local! Aplikacja moze nie dzialac bez kluczy Supabase." -ForegroundColor Red
+    Write-Host "Upewnij sie, ze skopiowales ten plik z innego komputera." -ForegroundColor Red
     Write-Host ""
 }
 
-# 1. Pobieranie aktualizacji z GitHub
+# 1. Update from GitHub
 Write-Host "[1/4] Sprawdzanie aktualizacji..." -ForegroundColor Yellow
 
 if (Get-Command git -ErrorAction SilentlyContinue) {
     if (Test-Path ".git") {
-        # Pobranie najświeższych informacji z serwera
+        # Fetch updates
         git fetch --all --quiet
         
-        # Sprawdzenie czy są zmiany lokalne, które mogą blokować pull
+        # Check for local changes
         $status = git status --porcelain
         if ($status) {
             Write-Host "Wykryto lokalne zmiany. Zabezpieczam je (git stash)..." -ForegroundColor Gray
             git stash --include-untracked --quiet
         }
 
-        # Wykonanie aktualizacji
-        Write-Host "Pobieranie nowych plików..." -ForegroundColor Cyan
+        # Pull updates
+        Write-Host "Pobieranie nowych plikow..." -ForegroundColor Cyan
         git pull --rebase --autostash
         
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Błąd podczas git pull. Upewnij się, że masz połączenie z internetem." -ForegroundColor Red
-            Write-Host "Spróbuj ręcznie: git pull" -ForegroundColor Gray
+            Write-Host "Blad podczas git pull. Upewnij sie, ze masz polaczenie z internetem." -ForegroundColor Red
+            Write-Host "Sprobuj recznie: git pull" -ForegroundColor Gray
         } else {
             Write-Host "Repozytorium jest aktualne." -ForegroundColor Green
         }
     } else {
-        Write-Host "Pominięto aktualizację: Folder nie jest repozytorium Git." -ForegroundColor Gray
+        Write-Host "PominieTo aktualizacje: Folder nie jest repozytorium Git." -ForegroundColor Gray
     }
 } else {
-    Write-Host "BŁĄD: Git nie jest zainstalowany lub nie jest w PATH!" -ForegroundColor Red
+    Write-Host "BLAD: Git nie jest zainstalowany lub nie jest w PATH!" -ForegroundColor Red
     Write-Host "Pobierz Git ze strony: https://git-scm.com/" -ForegroundColor Gray
 }
 
-# 2. Instalacja zależności npm
+# 2. Install npm dependencies
 Write-Host "[2/4] Sprawdzanie bibliotek (npm install)..." -ForegroundColor Yellow
 npm install --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Wystąpił błąd podczas instalacji bibliotek." -ForegroundColor Red
+    Write-Host "Wystapil blad podczas instalacji bibliotek." -ForegroundColor Red
 }
 
-# 3. Uruchomienie serwera Next.js
+# 3. Start Next.js server
 Write-Host "[3/4] Uruchamianie serwera Velvet..." -ForegroundColor Cyan
-Write-Host "Serwer wystartuje za chwilę. Proszę nie zamykać tego okna." -ForegroundColor Grey
+Write-Host "Serwer wystartuje za chwile. Prosze nie zamykac tego okna." -ForegroundColor Gray
 
-# Otwarcie przeglądarki w tle po krótkim opóźnieniu
+# Open browser in background
 Start-Job -ScriptBlock {
-    Start-Sleep -Seconds 8
-    Start-Process "http://localhost:3000"
+    Start-Sleep -Seconds 12
+    Start-Process 'http://localhost:3000'
 } | Out-Null
 
-# Start aplikacji
+# Start app
 npm run dev
