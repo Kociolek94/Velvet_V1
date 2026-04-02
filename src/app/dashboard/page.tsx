@@ -3,23 +3,25 @@
 import { useState, useEffect, useMemo } from 'react'
 import RelationshipChart from '@/components/RelationshipChart'
 import DashboardLayout from '@/components/DashboardLayout'
-import Sparkline from '@/components/Sparkline'
 import { getDashboardStats, DashboardStats } from '@/lib/dashboard'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
+import { useCompletion } from '@ai-sdk/react'
+import { getRelationshipContext } from '@/lib/actions/getRelationshipContext'
+import { getLatestAnalysis, saveAnalysis } from '@/lib/actions/aiAnalyses'
 import { 
     Heart, MessageCircle, Sparkles, Zap, Clock, 
     TrendingUp, Activity, ShieldAlert, Target, 
     ArrowRight, Loader2, Calendar, LayoutGrid,
-    Search, Bell
+    Search, Bell, Quote, MessageSquare, Brain, RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { isAfter, subDays, startOfDay } from 'date-fns'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
-import AIInsightCard from '@/components/AIInsightCard'
-import RelationshipAnalysis from '@/components/RelationshipAnalysis'
+import SparksWidget from '@/components/SparksWidget'
 
 export default function DashboardPage() {
     const { userId, coupleId, loading: authLoading } = useAuth()
@@ -28,6 +30,41 @@ export default function DashboardPage() {
     const [chartData, setChartData] = useState<any[]>([])
     const [names, setNames] = useState({ me: 'Ty', partner: 'Partner' })
     const [hasData, setHasData] = useState(false)
+    const [recentNotes, setRecentNotes] = useState<any[]>([])
+    const [loadingContext, setLoadingContext] = useState(false)
+
+    const { complete, completion, isLoading, setCompletion } = useCompletion({
+        api: '/api/chat',
+        streamProtocol: 'text',
+        onFinish: async (_prompt: string, completion: string) => {
+            if (coupleId && completion) {
+                try {
+                    await saveAnalysis(coupleId, completion)
+                } catch (error) {
+                    console.error('Błąd zapisu analizy:', error)
+                }
+            }
+        }
+    })
+
+    const parsedAnalysis = useMemo(() => {
+        if (!completion) return null
+        
+        const sections = completion.split(/#?\s*(Refleksja|Zadanie):?/i)
+        let refleksja = ""
+        let zadanie = ""
+        
+        for (let i = 1; i < sections.length; i += 2) {
+            const title = sections[i].toLowerCase()
+            const content = sections[i + 1]?.trim()
+            if (title.includes('refleksja')) refleksja = content
+            if (title.includes('zadanie')) zadanie = content
+        }
+        
+        if (!refleksja && !zadanie) refleksja = completion
+        
+        return { refleksja, zadanie }
+    }, [completion])
 
     const supabase = createClient()
 
@@ -39,7 +76,6 @@ export default function DashboardPage() {
             }
 
             try {
-                // 1. Fetch profiles for names
                 const { data: profiles } = await supabase
                     .from('profiles')
                     .select('id, display_name')
@@ -54,11 +90,9 @@ export default function DashboardPage() {
                     })
                 }
 
-                // 2. Load Stats
                 const dashboardStats = await getDashboardStats(coupleId, userId)
                 setStats(dashboardStats)
 
-                // 3. Fetch metrics for Radar Chart
                 const { data: metrics } = await supabase
                     .from('daily_metrics')
                     .select('*')
@@ -93,6 +127,33 @@ export default function DashboardPage() {
                         }
                     })
                     setChartData(newChartData)
+
+                    const yesterdayStart = startOfDay(subDays(new Date(), 1))
+                    const latestNotesMap = new Map()
+                    
+                    metrics.forEach(m => {
+                        if (m.note && m.note.trim() !== '' && isAfter(new Date(m.created_at), yesterdayStart)) {
+                            if (!latestNotesMap.has(m.user_id)) {
+                                latestNotesMap.set(m.user_id, {
+                                    id: m.id,
+                                    note: m.note,
+                                    userName: m.user_id === userId ? names.me : names.partner,
+                                    isMe: m.user_id === userId,
+                                    date: m.created_at
+                                })
+                            }
+                        }
+                    })
+                    setRecentNotes(Array.from(latestNotesMap.values()))
+                }
+
+                const latest = await getLatestAnalysis(coupleId)
+                if (latest) {
+                    const today = new Date().toISOString().split('T')[0]
+                    const analysisDate = new Date(latest.created_at).toISOString().split('T')[0]
+                    if (today === analysisDate) {
+                        setCompletion(latest.content)
+                    }
                 }
             } catch (err) {
                 console.error('Error loading dashboard:', err)
@@ -102,7 +163,22 @@ export default function DashboardPage() {
         }
 
         loadDashboardData()
-    }, [coupleId, userId, authLoading, supabase])
+    }, [coupleId, userId, authLoading, supabase, setCompletion, names.me, names.partner])
+
+    const handleStartAnalysis = async () => {
+        if (!coupleId) return
+        setLoadingContext(true)
+        setCompletion('')
+        try {
+            const context = await getRelationshipContext()
+            const prompt = `Oto dane o relacji pary:\n${JSON.stringify(context, null, 2)}\n\nPrzeprowadź analizę. ODPOWIEDZ W FORMACIE:\nRefleksja: [krótka, luksusowa analiza psychologiczna]\nZadanie: [jedno konkretne zadanie na dziś]`
+            await complete(prompt)
+        } catch (error) {
+            console.error('Błąd generowania analizy:', error)
+        } finally {
+            setLoadingContext(false)
+        }
+    }
 
     const isDataLoading = authLoading || loading
 
@@ -154,259 +230,274 @@ export default function DashboardPage() {
 
     return (
         <DashboardLayout>
-            <div className="max-w-7xl mx-auto space-y-12 pb-24 px-6">
-                {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-end gap-8 border-b border-white/5 pb-10">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-[1px] bg-velvet-gold/40" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-velvet-gold/60">System Velvet v2.1</span>
-                        </div>
-                        <h1 className="text-4xl md:text-6xl font-heading tracking-tight text-white uppercase">
-                            Puls <span className="text-velvet-gold italic font-light lowercase">Waszego</span> Świata
-                        </h1>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                        <div className="text-right space-y-1 pr-6 border-r border-white/10 hidden md:block">
-                            <span className="text-[10px] text-velvet-cream/30 uppercase tracking-[0.3em] font-black block">Wspólna Harmonia</span>
-                            <div className="flex items-center justify-end gap-2">
-                                <Activity size={14} className="text-emerald-500" />
-                                <span className="text-2xl font-heading text-white">{stats?.syncPercentage}%</span>
+            <div className="max-w-7xl mx-auto space-y-6 pb-24 px-6 pt-8">
+                
+                {/* 1. TOP ROW: KPI CARDS */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Harmonia */}
+                    <Card variant="bento" padding="md" className="flex items-center gap-6 h-28 relative overflow-hidden group">
+                        <div className="relative w-16 h-16 flex-shrink-0">
+                            <svg className="w-full h-full -rotate-90">
+                                <circle cx="32" cy="32" r="28" fill="transparent" stroke="rgba(212, 175, 55, 0.1)" strokeWidth="4" />
+                                <motion.circle 
+                                    cx="32" cy="32" r="28" fill="transparent" stroke="#D4AF37" strokeWidth="4" 
+                                    strokeDasharray={175.9} 
+                                    initial={{ strokeDashoffset: 175.9 }}
+                                    animate={{ strokeDashoffset: 175.9 - (175.9 * (stats?.syncPercentage || 0)) / 100 }}
+                                    transition={{ duration: 1.5, ease: "easeOut" }}
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-velvet-gold">
+                                {stats?.syncPercentage}%
                             </div>
                         </div>
-                        <Button variant="gold" className="rounded-2xl h-[54px] px-8 group shadow-gold-sm" asChild>
-                            <Link href="/dashboard/check-in">
-                                <Zap size={18} className="mr-3 group-hover:animate-pulse" />
-                                <span className="text-xs font-black uppercase tracking-widest">Aktualizuj Status</span>
-                            </Link>
-                        </Button>
-                    </div>
+                        <div>
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-velvet-gold/60 block mb-1">Harmonia</span>
+                            <div className="text-xl font-heading text-white">Zsynchronizowani</div>
+                        </div>
+                        <Activity className="absolute -right-4 -bottom-4 text-white/[0.02] group-hover:text-velvet-gold/5 transition-colors" size={80} />
+                    </Card>
+
+                    {/* Streak */}
+                    <Card variant="bento" padding="md" className="flex items-center gap-6 h-28 relative overflow-hidden group border-orange-500/10">
+                        <div className="w-16 h-16 rounded-2xl bg-orange-500/5 border border-orange-500/20 flex items-center justify-center relative">
+                            <div className="absolute inset-0 bg-orange-500/10 blur-xl animate-pulse" />
+                            <Zap className="text-orange-500 relative z-10" size={32} />
+                        </div>
+                        <div>
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-orange-500/60 block mb-1">Passa Dni</span>
+                            <div className="text-xl font-heading text-white">{stats?.streak} Dni Razem</div>
+                        </div>
+                        <Zap className="absolute -right-4 -bottom-4 text-white/[0.02] group-hover:text-orange-500/5 transition-colors" size={80} />
+                    </Card>
+
+                    {/* VP Wallet */}
+                    <Card variant="bento" padding="md" className="flex items-center gap-6 h-28 relative overflow-hidden group">
+                        <div className="w-16 h-16 rounded-2xl bg-velvet-gold/5 border border-velvet-gold/20 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-velvet-gold/5 blur-lg" />
+                            <Sparkles className="text-velvet-gold" size={32} />
+                        </div>
+                        <div>
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-velvet-gold/60 block mb-1">Portfel VP</span>
+                            <div className="text-xl font-heading text-white">{stats?.vpBalance} VP</div>
+                        </div>
+                        <Sparkles className="absolute -right-4 -bottom-4 text-white/[0.02] group-hover:text-velvet-gold/5 transition-colors" size={80} />
+                    </Card>
                 </div>
 
-                {/* Main Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+                {/* 2. MAIN BENTO GRID */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
-                    {/* Radar Card - Left Column */}
-                    <div className="lg:col-span-7 h-full">
-                        <Card className="p-8 md:p-12 flex flex-col h-full min-h-[600px] group overflow-hidden relative">
-                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Target size={120} />
-                            </div>
-                            
-                            <div className="flex justify-between items-center mb-12 relative z-10">
-                                <div className="space-y-1">
-                                    <h3 className="text-[11px] font-black uppercase tracking-[0.5em] text-velvet-gold">Karta Radarowa</h3>
-                                    <p className="text-[9px] text-velvet-cream/40 uppercase tracking-[0.2em]">Analiza z ostatnich 7 dni</p>
+                    {/* RELATIONAL ANALYSIS */}
+                    <div className="lg:col-span-8">
+                        <Card variant="bento" padding="none" className="h-full flex flex-col md:flex-row overflow-hidden group">
+                            {/* Left: Radar Chart */}
+                            <div className="md:w-5/12 p-8 border-b md:border-b-0 md:border-r border-white/5 flex flex-col justify-between bg-black/20">
+                                <div>
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-velvet-gold mb-2">Relational Radar</h3>
+                                    <p className="text-[8px] text-velvet-cream/30 uppercase tracking-widest">7-dniowa kondycja</p>
                                 </div>
-                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">SYNC: {stats?.syncPercentage}%</span>
+                                <div className="flex-1 flex items-center justify-center py-4 max-h-60 scale-75 md:scale-90">
+                                    <RelationshipChart data={chartData} userName={names.me} partnerName={names.partner} />
                                 </div>
-                            </div>
-
-                            <div className="flex-1 flex items-center justify-center py-8">
-                                <RelationshipChart data={chartData} userName={names.me} partnerName={names.partner} />
-                            </div>
-
-                            <div className="mt-12 space-y-4 relative z-10">
-                                {stats?.perceptionGaps.filter(g => g.gap > 2).map((gap, i) => (
-                                    <motion.div 
-                                        key={i} 
-                                        initial={{ x: -20, opacity: 0 }}
-                                        animate={{ x: 0, opacity: 1 }}
-                                        transition={{ delay: i * 0.1 }}
-                                        className="flex items-center justify-between p-4 bg-red-500/[0.03] border border-red-500/10 rounded-2xl group/gap hover:bg-red-500/[0.05] transition-colors"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center">
-                                                <ShieldAlert size={16} className="text-red-500" />
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <span className="text-[10px] text-red-500/80 font-black uppercase tracking-widest block">Potencjał Konfliktu</span>
-                                                <span className="text-xs text-white uppercase tracking-widest font-medium">Obszar: {gap.category}</span>
-                                            </div>
-                                        </div>
-                                        <Badge variant="red" size="sm">LUKA {gap.gap.toFixed(1)}</Badge>
-                                    </motion.div>
-                                ))}
-                                {stats?.perceptionGaps.filter(g => g.gap > 2).length === 0 && (
-                                    <div className="flex items-center gap-4 p-5 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
-                                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                                            <Sparkles size={18} className="text-emerald-500" />
-                                        </div>
-                                        <p className="text-[11px] text-emerald-500/80 uppercase tracking-widest font-black leading-relaxed">
-                                            Wasza percepcja jest doskonale zsynchronizowana. Jesteście dla siebie bezpiecznym portem.
-                                        </p>
+                                <div className="flex justify-center gap-4 mt-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-velvet-gold" />
+                                        <span className="text-[8px] text-white/40 uppercase font-bold">{names.me}</span>
                                     </div>
-                                )}
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-white/20" />
+                                        <span className="text-[8px] text-white/40 uppercase font-bold">{names.partner}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right: AI Insight */}
+                            <div className="md:w-7/12 p-8 flex flex-col gap-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Sparkles className="text-velvet-gold" size={16} />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Velvet Insight</span>
+                                    </div>
+                                    <Badge variant="gold" size="sm" className="text-[8px] px-2">LIVE</Badge>
+                                </div>
+
+                                <div className="flex-1 space-y-6 overflow-y-auto no-scrollbar max-h-[280px]">
+                                    {(isLoading || loadingContext) ? (
+                                        <div className="flex flex-col gap-4 animate-pulse pt-4">
+                                            <div className="h-4 bg-white/5 rounded w-full" />
+                                            <div className="h-4 bg-white/5 rounded w-3/4" />
+                                            <div className="h-20 bg-white/5 rounded w-full mt-4" />
+                                        </div>
+                                    ) : (completion) ? (
+                                        <>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2 text-velvet-gold/60">
+                                                    <Brain size={14} />
+                                                    <span className="text-[9px] font-bold uppercase tracking-widest">Refleksja</span>
+                                                </div>
+                                                <p className="text-xs text-velvet-cream/80 leading-relaxed font-light italic">
+                                                    {parsedAnalysis?.refleksja || "Przetwarzanie wglądu..."}
+                                                </p>
+                                            </div>
+
+                                            {parsedAnalysis?.zadanie && (
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2 text-emerald-500/60">
+                                                        <Target size={14} />
+                                                        <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500">Zadanie</span>
+                                                    </div>
+                                                    <div className="p-4 bg-emerald-500/[0.03] border border-emerald-500/10 rounded-xl group-hover:bg-emerald-500/[0.05] transition-colors">
+                                                        <p className="text-xs text-white/90 font-medium">
+                                                            {parsedAnalysis.zadanie}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-40">
+                                            <Brain size={32} className="text-velvet-gold/20" />
+                                            <p className="text-[10px] uppercase tracking-widest">Gotowi na dzisiejszą analizę?</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="pt-4 border-t border-white/5">
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={handleStartAnalysis}
+                                        disabled={isLoading || loadingContext}
+                                        className="w-full h-10 rounded-xl text-[9px] font-black uppercase tracking-widest gap-2 bg-white/[0.02]"
+                                    >
+                                        {isLoading || loadingContext ? <Loader2 className="animate-spin" size={14} /> : <><RefreshCw size={12} /> {completion ? 'Odśwież Wgląd' : 'Rozpocznij Analizę'}</>}
+                                    </Button>
+                                </div>
                             </div>
                         </Card>
                     </div>
 
-                    {/* Right Column - Widgets */}
-                    <div className="lg:col-span-5 flex flex-col gap-8 lg:gap-10">
-                        
-                        {/* communication Pulse */}
-                        <Card className="p-10 flex flex-col justify-between group h-full">
-                            <div>
-                                <div className="flex items-center justify-between mb-12">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-velvet-gold/5 border border-velvet-gold/10 flex items-center justify-center group-hover:bg-velvet-gold/10 transition-colors">
-                                            <MessageCircle className="text-velvet-gold" size={20} />
-                                        </div>
-                                        <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-white">Puls Rozmów</h3>
-                                    </div>
-                                    <Badge variant="gold">SAFE SPACE</Badge>
+                    {/* SIDE PANEL */}
+                    <div className="lg:col-span-4 flex flex-col gap-6">
+                        <Card variant="bento" padding="md" className="flex-1 flex flex-col gap-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <ShieldAlert className="text-red-500" size={18} />
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Safe Space Status</h3>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-10 mb-12">
-                                    <div className="space-y-2">
-                                        <span className="text-[9px] uppercase tracking-[0.3em] text-velvet-cream/30 font-black block">Otwartość</span>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl font-heading text-white">{stats?.activeTopics}</span>
-                                            <span className="text-velvet-cream/20 text-[10px] uppercase font-black tracking-widest">tematy</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <span className="text-[9px] uppercase tracking-[0.3em] text-velvet-cream/30 font-black block">Gojenie (AVG)</span>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl font-heading text-white">{stats?.deescalationTime}</span>
-                                            <span className="text-velvet-cream/20 text-[10px] uppercase font-black tracking-widest">h</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-8">
-                                    {['closeness', 'communication', 'support', 'intimacy'].map((metric) => (
-                                        <div key={metric} className="flex items-center justify-between group/line cursor-default">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-velvet-gold/20 group-hover/line:bg-velvet-gold group-hover/line:scale-125 transition-all duration-500" />
-                                                <span className="text-[10px] uppercase tracking-[0.2em] font-black text-velvet-cream/40 group-hover/line:text-white transition-colors capitalize">
-                                                    {metric === 'closeness' ? 'Bliskość' : metric === 'communication' ? 'Komunikacja' : metric === 'support' ? 'Wsparcie' : 'Intymność'}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-6">
-                                                <Sparkline data={stats?.trends[metric] || []} color="#C6A355" />
-                                                <span className="text-sm font-heading text-white w-4 text-right">
-                                                    {stats?.trends[metric]?.length ? stats.trends[metric][stats.trends[metric].length-1] : '-'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="mt-12 pt-8 border-t border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${stats && stats.activeTopics > 3 ? 'bg-red-500 animate-pulse' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'}`} />
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
-                                        Status: <span className={stats && stats.activeTopics > 3 ? 'text-red-500' : 'text-emerald-500'}>
-                                            {stats && stats.activeTopics > 3 ? 'Zatłoczony' : 'Czysty Eter'}
-                                        </span>
-                                    </span>
-                                </div>
-                                <Link href="/dashboard/safe-space" className="text-velvet-gold text-[9px] font-black uppercase tracking-widest flex items-center gap-2 group/btn">
-                                    Bezpieczna Przestrzeń <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                                <Link href="/dashboard/safe-space">
+                                    <ArrowRight size={14} className="text-white/20 hover:text-velvet-gold transition-colors" />
                                 </Link>
                             </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-3 flex flex-col items-center gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                                    <span className="text-lg font-heading text-white">{stats?.safeSpaceStatus.urgent}</span>
+                                    <span className="text-[7px] text-red-500/60 uppercase font-black tracking-widest">Urgent</span>
+                                </div>
+                                <div className="bg-orange-500/5 border border-orange-500/10 rounded-xl p-3 flex flex-col items-center gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                                    <span className="text-lg font-heading text-white">{stats?.safeSpaceStatus.open}</span>
+                                    <span className="text-[7px] text-orange-500/60 uppercase font-black tracking-widest">Open</span>
+                                </div>
+                                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 flex flex-col items-center gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                    <span className="text-lg font-heading text-white">{stats?.safeSpaceStatus.resolved}</span>
+                                    <span className="text-[7px] text-emerald-500/60 uppercase font-black tracking-widest">Solved</span>
+                                </div>
+                            </div>
                         </Card>
 
-                        {/* Dynamics Card */}
-                        <Card className="p-10 flex flex-col justify-between group overflow-hidden relative h-full">
-                            <div className="absolute -bottom-10 -right-10 opacity-[0.03] group-hover:opacity-10 transition-opacity">
-                                <TrendingUp size={240} />
-                            </div>
-                            
-                            <div>
-                                <div className="flex items-center justify-between mb-12">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-velvet-gold/5 border border-velvet-gold/10 flex items-center justify-center group-hover:bg-velvet-gold/10 transition-colors">
-                                            <TrendingUp className="text-velvet-gold" size={20} />
-                                        </div>
-                                        <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-white">Dynamika Energii</h3>
-                                    </div>
-                                    <Badge variant="gold">AKTYWNOŚĆ</Badge>
+                        <Card variant="bento" padding="md" className="flex-1 flex flex-col gap-6 bg-gradient-to-br from-[#0A0E14] via-[#0A0E14] to-velvet-gold/[0.03]">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Sparkles className="text-velvet-gold" size={18} />
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Ostatnie Okruchy</h3>
                                 </div>
-
-                                <div className="space-y-12 mb-10">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Clock className="text-velvet-gold/60" size={12} />
-                                            <span className="text-[9px] uppercase tracking-widest text-velvet-cream/40 font-black">Wspólne Momenty (7 dni)</span>
-                                        </div>
-                                        <div className="flex items-baseline gap-4">
-                                            <span className="text-7xl font-heading text-white">{stats?.activityScore}</span>
-                                            <div className="space-y-1">
-                                                <span className="text-emerald-500 text-[10px] uppercase tracking-widest font-black block">+12% vs week</span>
-                                                <span className="text-velvet-cream/20 text-[9px] uppercase tracking-widest font-black block">Zrealizowano</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-8 bg-white/[0.02] border border-white/5 rounded-3xl relative overflow-hidden active:scale-[0.98] transition-transform cursor-pointer">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-velvet-gold/5 to-transparent" />
-                                        <Target className="absolute -right-4 -top-4 text-white/[0.02]" size={100} />
-                                        <div className="relative z-10 space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[9px] uppercase tracking-widest text-velvet-gold font-black px-3 py-1 rounded-full bg-velvet-gold/10 border border-velvet-gold/20">Najbliższe Marzenie</span>
-                                                <Target size={14} className="text-velvet-gold/40" />
-                                            </div>
-                                            <h4 className="text-2xl font-heading text-white leading-tight">{stats?.nearestGoal}</h4>
-                                            <Link href="/dashboard/bucket-list" className="text-[9px] uppercase tracking-widest font-black text-velvet-cream/30 hover:text-white transition-colors flex items-center gap-3">
-                                                Otwórz Tablicę Marzeń <ArrowRight size={14} />
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
+                                <Link href="/dashboard/sparks">
+                                    <ArrowRight size={14} className="text-white/20 hover:text-velvet-gold transition-colors" />
+                                </Link>
                             </div>
 
-                            <div className="mt-4">
-                                <Button variant="burgundy" className="w-full py-6 rounded-2xl group/shuffle h-auto" asChild>
-                                    <Link href="/dashboard/activity-deck">
-                                        <RotateCcw size={18} className="mr-3 group-hover/shuffle:rotate-180 transition-transform duration-1000" />
-                                        <span className="text-xs font-black uppercase tracking-[0.2em]">Losuj Wspólną Aktywność</span>
-                                    </Link>
-                                </Button>
+                            <div className="space-y-3">
+                                {stats?.recentSparks.map((spark, idx) => (
+                                    <motion.div 
+                                        key={spark.id}
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.1 }}
+                                        className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 flex flex-col gap-1 relative group/spark"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[8px] font-black text-velvet-gold/40 uppercase tracking-widest">{spark.sender_name}</span>
+                                            <span className="text-[7px] text-white/20 uppercase font-bold">{new Date(spark.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <p className="text-[10px] text-white/70 line-clamp-1 italic">"{spark.content}"</p>
+                                    </motion.div>
+                                ))}
                             </div>
                         </Card>
                     </div>
                 </div>
 
-                {/* Relationship Analysis AI - Full Width */}
-                <RelationshipAnalysis />
-
-                {/* Velvet Insight (AI Confidant) - Full Width Grid */}
-                <AIInsightCard />
-
-                {/* Footer Advice */}
-                <div className="bg-gradient-to-br from-white to-velvet-cream/90 p-12 md:p-16 rounded-[4rem] flex flex-col lg:flex-row items-center justify-between gap-12 group relative overflow-hidden shadow-2xl">
-                    <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-velvet-gold/30 rounded-full blur-3xl pointer-events-none transition-all duration-1000 group-hover:scale-125 group-hover:opacity-50" />
-                    <div className="absolute -left-20 -top-20 w-60 h-60 bg-velvet-burgundy/10 rounded-full blur-3xl pointer-events-none" />
-
-                    <div className="space-y-8 relative z-10 max-w-2xl text-center lg:text-left">
-                        <div className="flex items-center justify-center lg:justify-start gap-4">
-                            <div className="w-12 h-[1px] bg-velvet-burgundy/40" />
-                            <h3 className="text-2xl font-black text-velvet-burgundy font-heading tracking-[0.2em] uppercase">Sztuka Bliskości</h3>
+                {/* 3. BOTTOM ROW: ACTION CARDS */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card variant="bento" padding="md" className="group h-32 flex flex-col justify-between overflow-hidden relative">
+                        <div className="flex items-center gap-3 relative z-10">
+                            <Target className="text-velvet-gold/40 group-hover:text-velvet-gold transition-colors" size={18} />
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Next Milestone</h3>
                         </div>
-                        <p className="text-black/70 text-lg leading-relaxed font-medium italic">
-                            „Niezależnie od liczb, pamiętajcie, że dzisiejszy dzień to nowa czysta karta. Małe gesty, jak wspólna herbata czy szczere „dziękuję”, budują fundament, którego nie zmierzy żaden algorytm.”
-                        </p>
-                    </div>
+                        <div className="relative z-10">
+                            <p className="text-xs text-velvet-cream/60 mb-2 truncate">{stats?.nearestGoal}</p>
+                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-full bg-velvet-gold w-[60%] rounded-full shadow-[0_0_10px_#D4AF37]" />
+                            </div>
+                        </div>
+                        <Target className="absolute -right-4 -bottom-4 text-white/[0.02] group-hover:text-velvet-gold/5 transition-colors" size={100} />
+                    </Card>
 
-                    <Link
-                        href="/dashboard/wishlist"
-                        className="bg-[#0A0E14] text-velvet-gold px-12 py-6 rounded-3xl font-black tracking-[0.4em] uppercase text-xs hover:bg-velvet-burgundy hover:text-white transition-all duration-500 shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-4 relative z-10"
+                    <Card variant="bento" padding="md" className="group h-32 flex flex-col justify-between overflow-hidden relative border-dashed border-white/10 hover:border-white/20">
+                        <div className="flex items-center gap-3 relative z-10">
+                            <Clock className="text-emerald-500/40 group-hover:text-emerald-500 transition-colors" size={18} />
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Daily Habit</h3>
+                        </div>
+                        <div className="relative z-10">
+                            <Link href="/dashboard/check-in" className="inline-flex items-center gap-2 group/btn">
+                                <span className="text-sm font-heading text-white">Wykonaj Check-in</span>
+                                <ArrowRight size={14} className="text-emerald-500 group-hover/btn:translate-x-1 transition-transform" />
+                            </Link>
+                        </div>
+                        <Calendar className="absolute -right-4 -bottom-4 text-white/[0.02] group-hover:text-emerald-500/5 transition-colors" size={100} />
+                    </Card>
+
+                    <Button 
+                        asChild
+                        variant="ghost" 
+                        className="p-0 h-auto rounded-2xl group active:scale-[0.98] transition-transform"
                     >
-                        Spełnij Życzenie <Sparkles size={16} className="animate-pulse" />
-                    </Link>
+                        <Link href="/dashboard/activity-deck">
+                            <Card variant="bento" padding="md" className="w-full h-32 flex flex-col justify-between overflow-hidden relative border-velvet-gold/20 bg-gradient-to-br from-[#0A0E14] to-velvet-gold/[0.05]">
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <Sparkles className="text-velvet-gold/60" size={18} />
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Activity Pick</h3>
+                                </div>
+                                <div className="relative z-10 flex items-center gap-2">
+                                    <span className="text-sm font-heading text-velvet-gold">Losuj Wspólnie</span>
+                                    <Activity size={14} className="group-hover:rotate-180 transition-transform duration-700" />
+                                </div>
+                                <LayoutGrid className="absolute -right-4 -bottom-4 text-white/[0.02] group-hover:text-velvet-gold/10 transition-colors" size={100} />
+                            </Card>
+                        </Link>
+                    </Button>
                 </div>
 
+                <div className="pt-12 text-center">
+                    <p className="text-[10px] text-velvet-cream/20 uppercase tracking-[0.5em] font-black">
+                        Velvet Relationship OS v2.1 • Always Synchronized
+                    </p>
+                </div>
             </div>
         </DashboardLayout>
     )
-}
-
-function RotateCcw(props: any) {
-    return <Activity {...props} />
 }

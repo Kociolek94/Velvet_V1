@@ -15,12 +15,14 @@ import {
     Gift,
     Flame,
     Users,
-    Layers
+    Layers,
+    Sparkles
 } from 'lucide-react'
 
 const MENU_ITEMS = [
     { id: 'back', label: 'Wróć do menu', href: '/', icon: ChevronLeft },
     { id: 'dashboard', label: 'Status Relacji', href: '/dashboard', icon: LayoutDashboard },
+    { id: 'sparks', label: 'Okruchy Miłości', href: '/dashboard/sparks', icon: Sparkles },
     { id: 'safe-space', label: 'Bezpieczna Przestrzeń', href: '/dashboard/issues', icon: ShieldCheck },
     { id: 'diary', label: 'Pamiętnik Związku', href: '/dashboard/diary', icon: BookHeart },
     { id: 'games', label: 'Velvet Games', href: '/dashboard/games', icon: Trophy },

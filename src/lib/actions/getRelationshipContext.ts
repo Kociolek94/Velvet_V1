@@ -66,17 +66,28 @@ export async function getRelationshipContext() {
 
   if (activityError) console.error('Error counting context activities:', activityError)
 
-  // 6. Zwrócenie czystego obiektu JSON dla LLM
+  // 6. Pobranie liczby love_sparks z ostatnich 7 dni
+  const { count: loveSparksCount, error: sparksError } = await supabase
+    .from('love_sparks')
+    .select('*', { count: 'exact', head: true })
+    .eq('couple_id', coupleId)
+    .gte('created_at', sevenDaysAgoTS)
+
+  if (sparksError) console.error('Error counting context sparks:', sparksError)
+
+  // 7. Zwrócenie czystego obiektu JSON dla LLM
   return {
     couple_id: coupleId,
     generated_at: now.toISOString(),
     relationship_metrics: dailyMetrics || [],
     ongoing_and_recent_issues: issues || [],
     activities_completed_this_week: completedActivitiesCount || 0,
+    love_sparks_sent_this_week: loveSparksCount || 0,
     summary_metadata: {
       metrics_days_count: 7,
       issues_days_count: 14,
-      activities_days_count: 7
+      activities_days_count: 7,
+      love_sparks_days_count: 7
     }
   }
 }

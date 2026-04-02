@@ -10,6 +10,14 @@ export interface DashboardStats {
     nearestGoal: string | null
     insight: string
     trends: { [key: string]: number[] } // 7-day trend arrays
+    streak: number
+    vpBalance: number
+    safeSpaceStatus: {
+        open: number
+        resolved: number
+        urgent: number
+    }
+    recentSparks: { id: string; content: string; sender_name: string; created_at: string }[]
 }
 
 export async function getDashboardStats(coupleId: string, userId: string): Promise<DashboardStats> {
@@ -22,7 +30,7 @@ export async function getDashboardStats(coupleId: string, userId: string): Promi
         .from('daily_metrics')
         .select('*')
         .eq('couple_id', coupleId)
-        .gte('created_at', startOfDay(sevenDaysAgo).toISOString())
+        .order('created_at', { ascending: false })
 
     const categories = ['closeness', 'communication', 'support', 'intimacy', 'time_together']
     const catNames: { [key: string]: string } = {
@@ -89,7 +97,65 @@ export async function getDashboardStats(coupleId: string, userId: string): Promi
         .limit(1)
         .single()
 
-    // 5. Generate Logic-based Insight
+    // 5. Calculate Streak
+    let streak = 0
+    if (metrics && metrics.length > 0) {
+        const uniqueDays = Array.from(new Set(metrics.map(m => startOfDay(new Date(m.created_at)).toISOString()))).sort().reverse()
+        let current = startOfDay(new Date())
+        
+        // If no check-in today, check if there was one yesterday to continue the streak
+        if (uniqueDays[0] !== current.toISOString()) {
+            current = startOfDay(subDays(new Date(), 1))
+        }
+
+        for (const day of uniqueDays) {
+            if (day === current.toISOString()) {
+                streak++
+                current = startOfDay(subDays(current, 1))
+            } else if (new Date(day) < current) {
+                break
+            }
+        }
+    }
+
+    // 6. Fetch VP Balance
+    const { data: wallet } = await supabase
+        .from('vp_wallets')
+        .select('balance')
+        .eq('user_id', userId)
+        .single()
+
+    // 7. Safe Space Counts
+    const { data: allIssues } = await supabase
+        .from('issues')
+        .select('status, priority')
+        .eq('couple_id', coupleId)
+
+    const safeSpaceStatus = {
+        open: allIssues?.filter(i => i.status !== 'resolved').length || 0,
+        resolved: allIssues?.filter(i => i.status === 'resolved').length || 0,
+        urgent: allIssues?.filter(i => i.status !== 'resolved' && i.priority === 'high').length || 0
+    }
+
+    // 8. Recent Sparks
+    const { data: sparks } = await supabase
+        .from('love_sparks')
+        .select('id, content, sender_id, created_at')
+        .eq('couple_id', coupleId)
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+    const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .eq('couple_id', coupleId)
+
+    const recentSparks = sparks?.map(s => ({
+        ...s,
+        sender_name: profiles?.find(p => p.id === s.sender_id)?.display_name || 'Partner'
+    })) || []
+
+    // 9. Generate Logic-based Insight
     let insight = "Wasza harmonia jest na dobrym poziomie. Pamiętajcie o codziennych małych gestach."
     if (syncPercentage < 70) {
         const topGap = gaps.sort((a,b) => b.gap - a.gap)[0]
@@ -108,6 +174,10 @@ export async function getDashboardStats(coupleId: string, userId: string): Promi
         activityScore,
         nearestGoal: bucketList?.title || 'Brak aktywnych celów',
         insight,
-        trends
+        trends,
+        streak,
+        vpBalance: wallet?.balance || 0,
+        safeSpaceStatus,
+        recentSparks
     }
 }

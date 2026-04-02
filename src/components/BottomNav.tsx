@@ -12,11 +12,13 @@ import {
     Gift,
     Flame,
     Users,
-    Layers
+    Layers,
+    Sparkles
 } from 'lucide-react'
 
 const NAV_ITEMS = [
     { id: 'dashboard', icon: LayoutDashboard, href: '/dashboard', label: 'Status' },
+    { id: 'sparks', icon: Sparkles, href: '/dashboard/sparks', label: 'Okruchy' },
     { id: 'issues', icon: ShieldCheck, href: '/dashboard/issues', label: 'Przestrzeń' },
     { id: 'diary', icon: BookHeart, href: '/dashboard/diary', label: 'Pamiętnik' },
     { id: 'games', icon: Trophy, href: '/dashboard/games', label: 'Gry' },
