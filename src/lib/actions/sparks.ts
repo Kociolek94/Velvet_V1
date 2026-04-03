@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { subHours } from 'date-fns'
+import { createPartnerNotification } from './notifications'
 
 export async function sendSpark(content: string) {
     const supabase = await createClient()
@@ -27,6 +28,20 @@ export async function sendSpark(content: string) {
         }])
 
     if (error) throw error
+
+    // Notify partner
+    try {
+        await createPartnerNotification({
+            type: 'spark',
+            title: 'Ktoś o Tobie myśli...',
+            content: 'Otrzymałeś nowy Love Spark! Sprawdź co słodkiego napisał partner.',
+            link: '/dashboard/sparks',
+            coupleId: profile.couple_id,
+            senderId: user.id
+        })
+    } catch (notifyError) {
+        console.error('Failed to send spark notification:', notifyError)
+    }
 
     revalidatePath('/dashboard')
     revalidatePath('/dashboard/sparks')

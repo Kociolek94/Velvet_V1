@@ -15,6 +15,7 @@ import {
     Wind,
     Send
 } from 'lucide-react'
+import { createPartnerNotification } from '@/lib/actions/notifications'
 
 const STEPS = [
     { title: 'Fakt', icon: MessageSquare, description: 'Co się wydarzyło?' },
@@ -80,6 +81,20 @@ export default function HeavyIssueForm() {
                 }])
 
             if (insertError) throw insertError
+
+            // Notify partner
+            try {
+                await createPartnerNotification({
+                    type: 'issue',
+                    title: 'Ważna wiadomość w Safe Space',
+                    content: 'Partner podzielił się trudniejszym tematem. Przeczytaj to na spokojnie, gdy będziesz gotowy/a.',
+                    link: '/dashboard/issues',
+                    coupleId: profile.couple_id,
+                    senderId: user.id
+                })
+            } catch (notifyError) {
+                console.error('Failed to send heavy issue notification:', notifyError)
+            }
 
             router.push('/dashboard/issues')
             router.refresh()

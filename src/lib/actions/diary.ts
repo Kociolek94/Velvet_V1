@@ -2,6 +2,7 @@
 
 import { createClient } from '../../utils/supabase/server'
 import { DiaryInsert, DiaryUpdate } from '@/types/diary'
+import { createPartnerNotification } from './notifications'
 
 export async function createDiaryEntry(entry: DiaryInsert) {
     const supabase = await createClient()
@@ -12,6 +13,21 @@ export async function createDiaryEntry(entry: DiaryInsert) {
         .single()
     
     if (error) throw error
+
+    // Notify partner
+    try {
+        await createPartnerNotification({
+            type: 'diary',
+            title: 'Nowy wpis w Dzienniku',
+            content: 'Partner właśnie opisał Wasze wspólne wspomnienie. Zajrzyj do Dziennika!',
+            link: `/dashboard/diary`,
+            coupleId: entry.couple_id,
+            senderId: entry.created_by || ''
+        })
+    } catch (notifyError) {
+        console.error('Failed to send diary notification:', notifyError)
+    }
+
     return data
 }
 
@@ -58,4 +74,29 @@ export async function addPerspective(id: string, content: any) {
         .eq('id', id)
     
     if (error) throw error
+
+    // Notify partner
+    try {
+        // Fetch full entry to get couple_id
+        const { data: updatedEntry } = await supabase
+            .from('diary_entries')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (updatedEntry && user) {
+            await createPartnerNotification({
+                type: 'diary',
+                title: 'Nowa perspektywa w Dzienniku',
+                content: 'Partner dodał swoją perspektywę do wspólnego wpisu!',
+                link: `/dashboard/diary`,
+                coupleId: updatedEntry.couple_id,
+                senderId: user.id
+            })
+        }
+    } catch (notifyError) {
+        console.error('Failed to send perspective notification:', notifyError)
+    }
 }

@@ -13,6 +13,7 @@ import {
     Clock
 } from 'lucide-react'
 import VelvetDateTimePicker from './VelvetDateTimePicker'
+import { createPartnerNotification } from '@/lib/actions/notifications'
 
 type Priority = 'red' | 'yellow' | 'green'
 
@@ -60,6 +61,20 @@ export default function TalkIssueForm() {
                 }])
 
             if (insertError) throw insertError
+
+            // Notify partner
+            try {
+                await createPartnerNotification({
+                    type: 'issue',
+                    title: 'Propozycja rozmowy w Safe Space',
+                    content: `Partner chce porozmawiać na temat: "${formData.title}". Sprawdź szczegóły i zaproponuj termin.`,
+                    link: '/dashboard/issues',
+                    coupleId: profile.couple_id,
+                    senderId: user.id
+                })
+            } catch (notifyError) {
+                console.error('Failed to send talk issue notification:', notifyError)
+            }
 
             router.push('/dashboard/issues')
             router.refresh()

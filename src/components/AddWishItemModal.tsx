@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { X, Gift, Heart, MessageCircle, Plus, Loader2 } from 'lucide-react'
+import { createPartnerNotification } from '@/lib/actions/notifications'
 
 interface AddWishItemModalProps {
     isOpen: boolean
@@ -41,6 +42,23 @@ export default function AddWishItemModal({ isOpen, onClose, onSuccess, coupleId,
                 })
 
             if (error) throw error
+
+            // Notify partner (only if not a secret)
+            if (!isSecret) {
+                try {
+                    await createPartnerNotification({
+                        type: 'wish',
+                        title: 'Ktoś ma małe życzenie...',
+                        content: `Partner dodał nowe życzenie: "${title}". Sprawdź, co sprawiłoby mu radość!`,
+                        link: '/dashboard/wishlist',
+                        coupleId: coupleId,
+                        senderId: userId
+                    })
+                } catch (notifyError) {
+                    console.error('Failed to send wishlist notification:', notifyError)
+                }
+            }
+
             onSuccess()
             onClose()
             resetForm()

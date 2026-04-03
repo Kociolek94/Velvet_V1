@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, MessageCircle, HandHelping, Flame, Clock, Plus, Loader2, CheckCircle2, Zap } from 'lucide-react'
+import { createPartnerNotification } from '@/lib/actions/notifications'
 
 const METRICS = [
     { id: 'closeness', label: 'Bliskość', icon: Heart, description: 'Jak blisko partnera czułeś/aś się dzisiaj?' },
@@ -88,6 +89,23 @@ export default function DailyCheckInForm() {
                 }])
 
             if (insertError) throw insertError
+
+            // Notify partner
+            if (profile?.couple_id) {
+                try {
+                    await createPartnerNotification({
+                        type: 'check_in',
+                        title: 'Jak minął Twój dzień?',
+                        content: 'Partner właśnie sprawdził swoje samopoczucie. Zobacz, co u niego!',
+                        link: '/dashboard',
+                        coupleId: profile.couple_id,
+                        senderId: user.id
+                    })
+                } catch (notifyError) {
+                    console.error('Failed to send check-in notification:', notifyError)
+                }
+            }
+
             setAlreadySubmitted(true)
             setTimeout(() => router.push('/dashboard'), 2000)
         } catch (err: any) {

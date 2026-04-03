@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { createPartnerNotification } from './notifications'
 
 /**
  * Pobiera najnowszą analizę AI dla danej pary.
@@ -31,6 +32,9 @@ export async function getLatestAnalysis(coupleId: string) {
 export async function saveAnalysis(coupleId: string, content: string) {
     const supabase = await createClient()
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Nieautoryzowany')
+
     const { data, error } = await supabase
         .from('ai_analyses')
         .insert([{
@@ -43,6 +47,20 @@ export async function saveAnalysis(coupleId: string, content: string) {
     if (error) {
         console.error('Error saving AI analysis:', error)
         throw new Error('Nie udało się zapisać analizy')
+    }
+
+    // Notify partner
+    try {
+        await createPartnerNotification({
+            type: 'analysis',
+            title: 'Nowy wgląd od Velvet Engine',
+            content: 'AI przygotowało nową analizę Waszej relacji. Sprawdź, co podpowiada Velvet!',
+            link: '/dashboard',
+            coupleId: coupleId,
+            senderId: user.id
+        })
+    } catch (notifyError) {
+        console.error('Failed to send analysis notification:', notifyError)
     }
 
     revalidatePath('/dashboard')
