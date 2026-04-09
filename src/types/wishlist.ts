@@ -7,6 +7,6 @@ export interface WishlistItem {
     link: string | null;
     category: string | null;
     is_secret: boolean;
-    status: 'open' | 'bought' | 'archived';
+    status: 'open' | 'bought' | 'archived' | 'in_progress';
     created_at: string;
 }
