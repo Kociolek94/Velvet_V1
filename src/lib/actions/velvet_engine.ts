@@ -94,7 +94,7 @@ export async function generateRelationshipInsight() {
       system: systemMessage,
       prompt: prompt,
       temperature: 0.7,
-      maxTokens: 1000,
+      maxOutputTokens: 1000,
     });
 
     console.log('--- VELVET ENGINE AI RESPONSE ---', text);
@@ -126,7 +126,7 @@ export async function analyzeMessage(content: string) {
       system: systemPrompt,
       prompt: `Wiadomość użytkownika: "${content}"`,
       temperature: 0.4,
-      maxTokens: 200,
+      maxOutputTokens: 200,
     });
 
     if (!text || text.trim().toUpperCase() === 'OK') {
