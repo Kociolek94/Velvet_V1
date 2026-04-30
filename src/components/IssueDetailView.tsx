@@ -51,7 +51,7 @@ export default function IssueDetailView({
     const content = issue.content as unknown as IssueContent
     const [editData, setEditData] = useState({
         priority: issue.priority,
-        need_now: content.needs || ''
+        need_now: content.need_now || content.needs || ''
     })
     const [comments, setComments] = useState<any[]>([])
     const [newComment, setNewComment] = useState('')
@@ -107,7 +107,7 @@ export default function IssueDetailView({
             priority: editData.priority as any
         }
         if (isHeavy) {
-            updates.content = { ...content, needs: editData.need_now }
+            updates.content = { ...content, need_now: editData.need_now }
         }
         await onUpdateIssue(issue.id, updates)
         setIsEditing(false)
@@ -258,7 +258,17 @@ export default function IssueDetailView({
                                         <h4 className="text-[10px] uppercase tracking-[0.4em] font-black">Potrzeba wtedy</h4>
                                     </div>
                                     <Card variant="outline" padding="md" className="text-velvet-cream/80 leading-relaxed">
-                                        {content.needs || 'Brak danych...'}
+                                        {content.needs || content.need_then || 'Brak danych...'}
+                                    </Card>
+                                </section>
+
+                                <section className="space-y-6">
+                                    <div className="flex items-center gap-3 text-velvet-gold/40">
+                                        <Wind size={18} />
+                                        <h4 className="text-[10px] uppercase tracking-[0.4em] font-black">Potrzeba teraz</h4>
+                                    </div>
+                                    <Card variant="outline" padding="md" className="text-velvet-cream/80 leading-relaxed border-l-2 border-l-velvet-gold/20">
+                                        {content.need_now || 'Brak danych...'}
                                     </Card>
                                 </section>
 
@@ -268,7 +278,7 @@ export default function IssueDetailView({
                                         <h4 className="text-[10px] uppercase tracking-[0.4em] font-black">Sugestia na przyszłość</h4>
                                     </div>
                                     <Card variant="burgundy" padding="md" className="text-velvet-cream/80 leading-relaxed bg-velvet-gold/5 border-velvet-gold/10">
-                                        {content.suggestions || 'Brak sugestii...'}
+                                        {content.suggestions || content.future_help || 'Brak sugestii...'}
                                     </Card>
                                 </section>
                             </div>

@@ -37,8 +37,8 @@ export default function HeavyIssueForm() {
     const [formData, setFormData] = useState({
         fact: '',
         emotions: [] as string[],
-        need_then: '',
-        future_help: '',
+        needs: '',
+        suggestions: '',
         need_now: ''
     })
 
@@ -138,8 +138,8 @@ export default function HeavyIssueForm() {
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
                         <textarea
-                            value={formData.need_then}
-                            onChange={e => setFormData({ ...formData, need_then: e.target.value })}
+                            value={formData.needs}
+                            onChange={e => setFormData({ ...formData, needs: e.target.value })}
                             placeholder="Czego zabrakło Ci w tamtym momencie? Podziel się swoją potrzebą..."
                             className="w-full h-48 bg-black/40 border border-white/5 rounded-2xl p-6 text-velvet-cream placeholder:text-white/10 focus:border-velvet-gold/30 focus:outline-none transition-all resize-none font-light leading-relaxed"
                         />
@@ -149,8 +149,8 @@ export default function HeavyIssueForm() {
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
                         <textarea
-                            value={formData.future_help}
-                            onChange={e => setFormData({ ...formData, future_help: e.target.value })}
+                            value={formData.suggestions}
+                            onChange={e => setFormData({ ...formData, suggestions: e.target.value })}
                             placeholder="Jak partner może zareagować następnym razem, byś czuł/a się bezpiecznie?"
                             className="w-full h-48 bg-black/40 border border-white/5 rounded-2xl p-6 text-velvet-cream placeholder:text-white/10 focus:border-velvet-gold/30 focus:outline-none transition-all resize-none font-light leading-relaxed"
                         />

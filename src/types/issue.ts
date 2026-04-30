@@ -14,5 +14,6 @@ export interface IssueContent {
     emotions?: string[]
     needs?: string
     suggestions?: string
+    need_now?: string
     [key: string]: any // Fallback for various templates
 }

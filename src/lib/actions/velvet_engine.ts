@@ -90,11 +90,11 @@ export async function generateRelationshipInsight() {
     const prompt = `DANE PERCEPTION GAP: ${gapContext || "Brak danych od obojga partnerów."}\n\nOSTATNIE METRYKI: ${metricsContext}\n\nWygeneruj swój Velvet Insight.`;
 
     const { text } = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-1.5-flash'),
       system: systemMessage,
       prompt: prompt,
       temperature: 0.7,
-      maxTokens: 1000,
+      maxOutputTokens: 1000,
     });
 
     console.log('--- VELVET ENGINE AI RESPONSE ---', text);
@@ -122,11 +122,11 @@ export async function analyzeMessage(content: string) {
     Zacznij od 'Velvet Engine sugeruje: '`;
 
     const { text } = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-1.5-flash'),
       system: systemPrompt,
       prompt: `Wiadomość użytkownika: "${content}"`,
       temperature: 0.4,
-      maxTokens: 200,
+      maxOutputTokens: 200,
     });
 
     if (!text || text.trim().toUpperCase() === 'OK') {
